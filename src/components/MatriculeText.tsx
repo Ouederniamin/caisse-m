@@ -15,6 +15,15 @@ interface MatriculeTextProps {
 }
 
 export default function MatriculeText({ matricule, style, size = 'medium' }: MatriculeTextProps) {
+  // Handle null/undefined matricule
+  if (!matricule) {
+    return (
+      <View style={[plateStyles.plate, plateStyles[size], style]}>
+        <Text style={[plateStyles.text, plateStyles[`${size}Text`]]}>---</Text>
+      </View>
+    );
+  }
+
   // Parse the matricule to ensure proper display
   const parts = matricule.match(/(\d{2,3})\s*تونس\s*(\d{3,4})/);
   
@@ -113,6 +122,15 @@ const plateStyles = StyleSheet.create({
  * Badge variant with background (deprecated - use default MatriculeText for license plate style)
  */
 export function MatriculeBadge({ matricule, style }: MatriculeTextProps) {
+  // Handle null/undefined matricule
+  if (!matricule) {
+    return (
+      <View style={[badgeStyles.container, badgeStyles.fallbackContainer, style]}>
+        <Text style={badgeStyles.fallbackText}>---</Text>
+      </View>
+    );
+  }
+
   const parts = matricule.match(/(\d{2,3})\s*تونس\s*(\d{3,4})/);
   
   if (!parts) {

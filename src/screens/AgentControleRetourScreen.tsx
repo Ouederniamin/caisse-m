@@ -2,14 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Image, Platform } from 'react-native';
 import { Text, Card, Title, Button, TextInput, Modal, Portal, Paragraph, Switch, IconButton, ActivityIndicator } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import api from '../services/api';
 import MatriculeText from '../components/MatriculeText';
-
-// Conditionally import UploadThing for native only
-const useUploadThing = Platform.OS !== 'web' 
-  ? require('../utils/uploadthing').useImageUploader 
-  : null;
 
 interface TourRetourScreenProps {
   route: any;
@@ -27,24 +22,6 @@ export default function AgentControleRetourScreen({ route, navigation }: TourRet
   const [hasChickenProducts, setHasChickenProducts] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  // UploadThing hook - only used on native
-  const uploadThingHook = Platform.OS !== 'web' && useUploadThing 
-    ? useUploadThing("tourImageUploader", {
-        onClientUploadComplete: (res: any) => {
-          console.log('[UploadThing] Upload complete:', res);
-          if (res && res[0]) {
-            setPhotoData({ type: 'url', value: res[0].url });
-            setIsProcessing(false);
-          }
-        },
-        onUploadError: (error: any) => {
-          console.error('[UploadThing] Upload error:', error);
-          Alert.alert('Erreur', 'Impossible d\'uploader la photo: ' + error.message);
-          setIsProcessing(false);
-        },
-      })
-    : null;
 
   React.useEffect(() => {
     loadTour();
@@ -90,36 +67,20 @@ export default function AgentControleRetourScreen({ route, navigation }: TourRet
         setIsProcessing(false);
       }
     } else {
-      // Native: Use UploadThing if available, fallback to base64
-      if (uploadThingHook?.openImagePicker) {
-        // The UploadThing hook will handle the upload via its callbacks
-        // For now, also save base64 as backup
-        try {
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          setPhotoData({ type: 'base64', value: base64 });
-          setIsProcessing(false);
-        } catch (error) {
-          console.error('[Retour] Native base64 error:', error);
-          setIsProcessing(false);
-        }
-      } else {
-        // Fallback to base64 if UploadThing not available
-        try {
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          setPhotoData({ type: 'base64', value: base64 });
-          setIsProcessing(false);
-        } catch (error) {
-          console.error('[Retour] Native base64 fallback error:', error);
-          Alert.alert('Erreur', 'Impossible de traiter la photo');
-          setIsProcessing(false);
-        }
+      // Native: Convert to base64, backend will upload to UploadThing
+      try {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        setPhotoData({ type: 'base64', value: base64 });
+        setIsProcessing(false);
+      } catch (error) {
+        console.error('[Retour] Native base64 error:', error);
+        Alert.alert('Erreur', 'Impossible de traiter la photo');
+        setIsProcessing(false);
       }
     }
-  }, [uploadThingHook]);
+  }, []);
 
   // Take photo with camera
   const handleTakePhoto = async () => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Image, Alert, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface PhotoUploadProps {
   onUploadComplete: (url: string) => void;

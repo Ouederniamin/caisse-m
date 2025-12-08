@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider, MD3LightTheme, configureFonts } from 'react-native-paper';
 import * as Network from 'expo-network';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -21,6 +22,20 @@ import DirectionScreen from './src/screens/DirectionScreen';
 import MainTabs from './src/navigation/MainTabs';
 import api from './src/services/api';
 import pushNotificationService from './src/services/pushNotificationService';
+
+// Clear stale cache on app start to prevent SQLITE_FULL errors
+AsyncStorage.getAllKeys().then(keys => {
+  const cacheKeys = keys.filter(k => k.startsWith('@caisse_') && k.endsWith('_cache'));
+  if (cacheKeys.length > 0) {
+    AsyncStorage.multiRemove(cacheKeys).then(() => {
+      console.log('[App] Cleared stale cache:', cacheKeys.length, 'items');
+    }).catch(err => {
+      console.warn('[App] Error clearing cache:', err.message);
+    });
+  }
+}).catch(err => {
+  console.warn('[App] Error getting storage keys:', err.message);
+});
 
 const Stack = createNativeStackNavigator();
 

@@ -63,10 +63,19 @@ export default function SecuriteScreen() {
       setLoading(true);
       const response = await api.get('/api/tours');
       // Only show tours that are relevant to security operations
-      // Exclude tours that have already exited (date_sortie_finale set) from the main view
-      const relevantTours = response.data.filter((tour: any) => 
-        ['PREPARATION', 'PRET_A_PARTIR', 'EN_TOURNEE', 'EN_ATTENTE_DECHARGEMENT', 'DE_RETOUR', 'EN_ATTENTE_HYGIENE', 'TERMINEE'].includes(tour.statut)
-      );
+      // Filter to only show today's tours (except for completed which shows all of today)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const relevantTours = response.data.filter((tour: any) => {
+        // Check if tour was created today
+        const tourDate = new Date(tour.createdAt);
+        tourDate.setHours(0, 0, 0, 0);
+        const isToday = tourDate.getTime() === today.getTime();
+        
+        // Only include today's tours
+        return isToday && ['PREPARATION', 'PRET_A_PARTIR', 'EN_TOURNEE', 'EN_ATTENTE_DECHARGEMENT', 'DE_RETOUR', 'EN_ATTENTE_HYGIENE', 'TERMINEE'].includes(tour.statut);
+      });
       setTours(relevantTours);
     } catch (error) {
       console.error('Error loading tours:', error);
@@ -218,6 +227,12 @@ export default function SecuriteScreen() {
       ? (tour.poids_brut_securite_sortie - poidsEntree).toFixed(2) 
       : null;
 
+    // Format time helper
+    const formatTime = (dateStr: string | null) => {
+      if (!dateStr) return '--:--';
+      return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    };
+
     return (
       <Card key={tour.id} style={[
         styles.tourCard, 
@@ -225,167 +240,128 @@ export default function SecuriteScreen() {
         readyToExit && styles.tourCardReadyToExit,
         exited && styles.tourCardDeparted,
       ]}>
-        <Card.Content>
-          {/* Vehicle returned - needs Pesée Entrée */}
-          {showPeseeEntree && (
-            <View style={styles.enRouteBanner}>
-              <MaterialCommunityIcons name="keyboard-return" size={18} color="#FF9800" />
-              <Text style={styles.enRouteBannerText}>Véhicule de retour - Pesée requise</Text>
-              {tour.date_sortie_securite && (
-                <Text style={styles.enRouteBannerTime}>
-                  Sorti à {new Date(tour.date_sortie_securite).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              )}
-            </View>
-          )}
-          
-          {/* Being Processed Banner (Déchargement or Hygiène) */}
-          {beingProcessed && (
-            <View style={styles.processingBanner}>
-              <MaterialCommunityIcons 
-                name={tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'package-down' : 'spray'} 
-                size={18} 
-                color="#795548" 
-              />
-              <Text style={styles.processingBannerText}>
-                {tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'Déchargement en cours' : 'Nettoyage en cours'}
-              </Text>
-            </View>
-          )}
-          
-          {/* Ready to Exit Banner */}
-          {readyToExit && (
-            <View style={styles.readyToExitBanner}>
-              <MaterialCommunityIcons name="exit-run" size={18} color="#9C27B0" />
-              <Text style={styles.readyToExitBannerText}>Prêt à sortir - Autoriser sortie</Text>
-            </View>
-          )}
-          
-          {/* Exited Banner */}
-          {exited && (
-            <View style={styles.departedBanner}>
-              <MaterialCommunityIcons name="check-circle" size={18} color="#4CAF50" />
-              <Text style={styles.departedBannerText}>Véhicule sorti</Text>
-              {tour.date_sortie_finale && (
-                <Text style={styles.departedBannerTime}>
-                  Sortie: {new Date(tour.date_sortie_finale).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              )}
-            </View>
-          )}
-          
+        <Card.Content style={styles.cardContent}>
+          {/* Header Row: Driver + Status Badge */}
           <View style={styles.tourHeader}>
             <View style={styles.tourHeaderLeft}>
-              <Text style={styles.driverName}>{tour.driver?.nom_complet || 'Chauffeur non assigné'}</Text>
-              <MatriculeText matricule={tour.matricule_vehicule} size="medium" />
+              <Text style={styles.driverName}>{tour.driver?.nom_complet || 'Chauffeur'}</Text>
+              <MatriculeText matricule={tour.matricule_vehicule} size="small" />
             </View>
             <View style={[styles.statusBadge, { backgroundColor: getTourStatusColor(tour.statut) }]}>
               <Text style={styles.statusText}>{getTourStatusLabel(tour.statut)}</Text>
             </View>
           </View>
-          
-          <View style={styles.tourInfoCompact}>
-            <Text style={styles.infoTextCompact}>
-              📍 {tour.secteur?.nom || 'Secteur'} • 📦 {tour.nbre_caisses_depart || tour.nombre_caisses_livrees || 0} caisses
-              {tour.date_sortie_securite && ` • ⏱ ${new Date(tour.date_sortie_securite).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
-            </Text>
+
+          {/* Info Row: Secteur + Caisses */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <MaterialCommunityIcons name="map-marker" size={14} color="#666" />
+              <Text style={styles.infoText}>{tour.secteur?.nom || 'Secteur'}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <MaterialCommunityIcons name="package-variant" size={14} color="#666" />
+              <Text style={styles.infoText}>{tour.nbre_caisses_depart || 0} caisses</Text>
+            </View>
           </View>
 
-          <View style={styles.peseeSection}>
-            <View style={styles.peseeRowCompact}>
-              <View style={[styles.peseeItemCompact, tour.poids_brut_securite_sortie && styles.peseeItemCompactDone]}>
-                <MaterialCommunityIcons name="arrow-up-bold-circle" size={18} color={tour.poids_brut_securite_sortie ? '#4CAF50' : '#9E9E9E'} />
-                <Text style={styles.peseeLabelCompact}>Sortie</Text>
-                <Text style={[styles.peseeValueCompact, tour.poids_brut_securite_sortie && styles.peseeValueCompactDone]}>
+          {/* Sortie / Entrée Times Row */}
+          <View style={styles.timesRow}>
+            <View style={styles.timeItem}>
+              <MaterialCommunityIcons name="arrow-up-circle" size={18} color={tour.date_sortie_securite ? '#2196F3' : '#BDBDBD'} />
+              <Text style={styles.timeLabel}>Sortie</Text>
+              <Text style={[styles.timeValue, tour.date_sortie_securite && styles.timeValueActive]}>
+                {formatTime(tour.date_sortie_securite)}
+              </Text>
+            </View>
+            <View style={styles.timeDivider} />
+            <View style={styles.timeItem}>
+              <MaterialCommunityIcons name="arrow-down-circle" size={18} color={tour.date_entree_securite ? '#FF9800' : '#BDBDBD'} />
+              <Text style={styles.timeLabel}>Entrée</Text>
+              <Text style={[styles.timeValue, tour.date_entree_securite && styles.timeValueActive]}>
+                {formatTime(tour.date_entree_securite)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Poids Row + Status Chip */}
+          <View style={styles.poidsRow}>
+            <View style={styles.poidsContainer}>
+              <View style={styles.poidsItem}>
+                <Text style={styles.poidsLabel}>Poids Sortie</Text>
+                <Text style={[styles.poidsValue, tour.poids_brut_securite_sortie && styles.poidsValueActive]}>
                   {tour.poids_brut_securite_sortie ? `${tour.poids_brut_securite_sortie} kg` : '---'}
                 </Text>
               </View>
-              
-              <MaterialCommunityIcons 
-                name={completed ? 'check-circle' : showPeseeEntree ? 'chevron-right' : 'arrow-right'} 
-                size={20} 
-                color={completed ? '#4CAF50' : showPeseeEntree ? '#FF9800' : '#BDBDBD'} 
-              />
-              
-              <View style={[styles.peseeItemCompact, poidsEntree && styles.peseeItemCompactDone]}>
-                <MaterialCommunityIcons name="arrow-down-bold-circle" size={18} color={poidsEntree ? '#4CAF50' : '#9E9E9E'} />
-                <Text style={styles.peseeLabelCompact}>Entrée</Text>
-                <Text style={[styles.peseeValueCompact, poidsEntree && styles.peseeValueCompactDone]}>
+              <MaterialCommunityIcons name="arrow-right" size={16} color="#BDBDBD" />
+              <View style={styles.poidsItem}>
+                <Text style={styles.poidsLabel}>Poids Entrée</Text>
+                <Text style={[styles.poidsValue, poidsEntree && styles.poidsValueActive]}>
                   {poidsEntree ? `${poidsEntree} kg` : '---'}
                 </Text>
               </View>
-              
               {difference && (
-                <View style={styles.differenceCompact}>
-                  <Text style={styles.differenceValueCompact}>{difference > 0 ? '+' : ''}{difference} kg</Text>
+                <View style={styles.diffBadge}>
+                  <Text style={styles.diffText}>Δ {difference} kg</Text>
                 </View>
               )}
             </View>
+            
+            {/* Status indicator on right */}
+            {exited && (
+              <View style={styles.exitedBadge}>
+                <MaterialCommunityIcons name="check-circle" size={16} color="#4CAF50" />
+                <Text style={styles.exitedText}>Sortie effectuée</Text>
+              </View>
+            )}
+            {beingProcessed && (
+              <View style={styles.processingBadge}>
+                <MaterialCommunityIcons name={tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'package-down' : 'spray'} size={14} color="#795548" />
+                <Text style={styles.processingText}>{tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'Déchargement' : 'Hygiène'}</Text>
+              </View>
+            )}
           </View>
         </Card.Content>
         
-        <Card.Actions style={styles.cardActions}>
-          {/* Pesée Sortie - Vehicle leaving for delivery */}
-          {showPeseeSortie && (
-            <Button 
-              mode="contained" 
-              icon="scale" 
-              style={[styles.actionButton, { backgroundColor: '#2196F3' }]} 
-              labelStyle={styles.actionButtonLabel} 
-              onPress={() => navigation.navigate('PeseeSortie', { tourId: tour.id })}
-            >
-              Pesée Sortie
-            </Button>
-          )}
-          
-          {/* Pesée Entrée - Vehicle returned from delivery */}
-          {showPeseeEntree && (
-            <Button 
-              mode="contained" 
-              icon="scale" 
-              style={[styles.actionButton, { backgroundColor: '#FF9800' }]} 
-              labelStyle={styles.actionButtonLabel} 
-              onPress={() => navigation.navigate('PeseeEntree', { tourId: tour.id })}
-            >
-              Pesée Entrée
-            </Button>
-          )}
-          
-          {/* Being processed by agents - Show status */}
-          {beingProcessed && (
-            <Chip 
-              icon={tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'package-down' : 'spray'} 
-              style={styles.processingChip} 
-              textStyle={styles.processingChipText}
-            >
-              {tour.statut === 'EN_ATTENTE_DECHARGEMENT' ? 'Déchargement' : 'Hygiène'}
-            </Chip>
-          )}
-          
-          {/* Ready to Exit - Authorize vehicle exit */}
-          {readyToExit && (
-            <Button 
-              mode="contained" 
-              icon="exit-run" 
-              style={[styles.actionButton, { backgroundColor: '#9C27B0' }]} 
-              labelStyle={styles.actionButtonLabel} 
-              onPress={() => handleAuthorizeExit(tour.id)}
-            >
-              Autoriser Sortie
-            </Button>
-          )}
-          
-          {/* Exited - Show completion */}
-          {exited && (
-            <Chip 
-              icon="check-circle" 
-              style={styles.completeChip} 
-              textStyle={styles.completeChipText}
-            >
-              Sortie effectuée
-            </Chip>
-          )}
-        </Card.Actions>
+        {/* Action Button - Only show if action needed */}
+        {(showPeseeSortie || showPeseeEntree || readyToExit) && (
+          <Card.Actions style={styles.cardActions}>
+            {showPeseeSortie && (
+              <Button 
+                mode="contained" 
+                icon="scale" 
+                style={[styles.actionButton, { backgroundColor: '#2196F3' }]} 
+                labelStyle={styles.actionButtonLabel} 
+                onPress={() => navigation.navigate('PeseeSortie', { tourId: tour.id })}
+              >
+                Pesée Sortie
+              </Button>
+            )}
+            
+            {showPeseeEntree && (
+              <Button 
+                mode="contained" 
+                icon="scale" 
+                style={[styles.actionButton, { backgroundColor: '#FF9800' }]} 
+                labelStyle={styles.actionButtonLabel} 
+                onPress={() => navigation.navigate('PeseeEntree', { tourId: tour.id })}
+              >
+                Pesée Entrée
+              </Button>
+            )}
+            
+            {readyToExit && (
+              <Button 
+                mode="contained" 
+                icon="exit-run" 
+                style={[styles.actionButton, { backgroundColor: '#9C27B0' }]} 
+                labelStyle={styles.actionButtonLabel} 
+                onPress={() => handleAuthorizeExit(tour.id)}
+              >
+                Autoriser Sortie
+              </Button>
+            )}
+          </Card.Actions>
+        )}
       </Card>
     );
   };
@@ -483,191 +459,58 @@ const styles = StyleSheet.create({
   emptyContent: { alignItems: 'center', paddingVertical: 30 },
   emptyText: { textAlign: 'center', color: '#1976D2', fontSize: 16, fontWeight: '500', marginTop: 15 },
   clearSearchButton: { marginTop: 10 },
-  tourCard: { marginBottom: 12, elevation: 2, borderRadius: 12 },
-  tourCardEnRoute: { borderLeftWidth: 4, borderLeftColor: '#FF9800', backgroundColor: '#FFFDE7' },
-  tourCardRetour: { borderLeftWidth: 4, borderLeftColor: '#9C27B0', backgroundColor: '#FBF5FF' },
-  enRouteBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFF3E0', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  enRouteBannerText: { 
-    color: '#E65100', 
-    fontWeight: '600', 
-    fontSize: 14, 
-    flex: 1,
-  },
-  enRouteBannerTime: { 
-    color: '#FF9800', 
-    fontSize: 12, 
-    fontWeight: '500',
-  },
-  retourBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#F3E5F5', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  retourBannerText: { 
-    color: '#7B1FA2', 
-    fontWeight: '600', 
-    fontSize: 14,
-  },
-  tourHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  tourHeaderLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  driverName: { fontSize: 15, fontWeight: 'bold', color: '#333' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  
+  // Tour Card Styles
+  tourCard: { marginBottom: 12, elevation: 3, borderRadius: 12, backgroundColor: '#fff' },
+  tourCardEnRoute: { borderLeftWidth: 4, borderLeftColor: '#FF9800' },
+  tourCardReadyToExit: { borderLeftWidth: 4, borderLeftColor: '#9C27B0' },
+  tourCardDeparted: { borderLeftWidth: 4, borderLeftColor: '#4CAF50', opacity: 0.85 },
+  cardContent: { paddingVertical: 12, paddingHorizontal: 14 },
+  
+  // Header Row
+  tourHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  tourHeaderLeft: { flex: 1, gap: 4 },
+  driverName: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  tourInfoCompact: { marginBottom: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  infoTextCompact: { fontSize: 13, color: '#666' },
-  peseeSection: { backgroundColor: '#FAFAFA', borderRadius: 8, padding: 10, marginTop: 4 },
-  peseeRowCompact: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  peseeItemCompact: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6 },
-  peseeItemCompactDone: { backgroundColor: '#E8F5E9' },
-  peseeLabelCompact: { fontSize: 13, color: '#666' },
-  peseeValueCompact: { fontSize: 15, fontWeight: 'bold', color: '#9E9E9E' },
-  peseeValueCompactDone: { color: '#2E7D32' },
-  differenceCompact: { backgroundColor: '#FFF3E0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-  differenceValueCompact: { fontSize: 14, fontWeight: 'bold', color: '#FF9800' },
-  enRouteBadge: { 
-    backgroundColor: '#FFF3E0', 
-    borderRadius: 20, 
-    padding: 8,
-    borderWidth: 2,
-    borderColor: '#FF9800',
-  },
-  enRouteActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  enRouteInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FFE0B2',
-  },
-  enRouteInfoText: {
-    color: '#E65100',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  differenceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#EEEEEE', gap: 8 },
-  differenceText: { fontSize: 14, color: '#666' },
-  differenceValue: { fontWeight: 'bold', color: '#FF9800' },
-  cardActions: { justifyContent: 'flex-end', paddingHorizontal: 12, paddingBottom: 12, gap: 8 },
-  actionButton: { borderRadius: 8 },
+  
+  // Info Row
+  infoRow: { flexDirection: 'row', gap: 16, marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  infoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoText: { fontSize: 13, color: '#666' },
+  
+  // Times Row
+  timesRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 10 },
+  timeItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  timeLabel: { fontSize: 12, color: '#666', fontWeight: '500' },
+  timeValue: { fontSize: 14, fontWeight: 'bold', color: '#BDBDBD' },
+  timeValueActive: { color: '#1a1a1a' },
+  timeDivider: { width: 1, height: 24, backgroundColor: '#E0E0E0', marginHorizontal: 10 },
+  
+  // Poids Row
+  poidsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F5F5F5', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10 },
+  poidsContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  poidsItem: { alignItems: 'center' },
+  poidsLabel: { fontSize: 10, color: '#888', marginBottom: 2 },
+  poidsValue: { fontSize: 13, fontWeight: 'bold', color: '#BDBDBD' },
+  poidsValueActive: { color: '#2E7D32' },
+  diffBadge: { backgroundColor: '#FFF3E0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  diffText: { fontSize: 11, fontWeight: 'bold', color: '#E65100' },
+  
+  // Status Badges
+  exitedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  exitedText: { fontSize: 11, fontWeight: '600', color: '#2E7D32' },
+  processingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFEBE9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  processingText: { fontSize: 11, fontWeight: '600', color: '#5D4037' },
+  
+  // Card Actions
+  cardActions: { justifyContent: 'flex-end', paddingHorizontal: 12, paddingBottom: 12, paddingTop: 0 },
+  actionButton: { borderRadius: 8, flex: 1 },
   actionButtonLabel: { fontSize: 13, fontWeight: '600' },
+  
+  // Legacy styles kept for compatibility
   completeChip: { backgroundColor: '#E8F5E9' },
   completeChipText: { color: '#2E7D32', fontWeight: '600' },
-  enRouteChip: { backgroundColor: '#FFF3E0' },
-  enRouteChipText: { color: '#E65100', fontWeight: '600' },
   processingChip: { backgroundColor: '#EFEBE9' },
   processingChipText: { color: '#5D4037', fontWeight: '600' },
-  processingBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#EFEBE9', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  processingBannerText: { 
-    color: '#5D4037', 
-    fontWeight: '600', 
-    fontSize: 14,
-  },
-  readyDepartBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#F3E5F5', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  readyDepartBannerText: { 
-    color: '#7B1FA2', 
-    fontWeight: '600', 
-    fontSize: 14,
-    flex: 1,
-  },
-  readyToExitBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#F3E5F5', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  readyToExitBannerText: { 
-    color: '#7B1FA2', 
-    fontWeight: '600', 
-    fontSize: 14,
-    flex: 1,
-  },
-  departedBanner: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#E8F5E9', 
-    marginBottom: 12, 
-    marginHorizontal: -16, 
-    marginTop: -16, 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12,
-    gap: 8,
-  },
-  departedBannerText: { 
-    color: '#2E7D32', 
-    fontWeight: '600', 
-    fontSize: 14,
-    flex: 1,
-  },
-  departedBannerTime: { 
-    color: '#4CAF50', 
-    fontSize: 12, 
-    fontWeight: '500',
-  },
-  tourCardReadyDepart: { borderLeftWidth: 4, borderLeftColor: '#9C27B0', backgroundColor: '#FBF5FF' },
-  tourCardReadyToExit: { borderLeftWidth: 4, borderLeftColor: '#9C27B0', backgroundColor: '#FBF5FF' },
-  tourCardDeparted: { borderLeftWidth: 4, borderLeftColor: '#4CAF50', backgroundColor: '#F1F8E9' },
-  waitingChip: { backgroundColor: '#ECEFF1' },
-  waitingChipText: { color: '#607D8B', fontWeight: '600' },
 });

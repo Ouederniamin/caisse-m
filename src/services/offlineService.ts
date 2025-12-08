@@ -2,17 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Network from 'expo-network';
 import api from './api';
 
-// Types
+// Types - matching backend response
 interface KPIData {
-  tours_actives: number;
-  caisses_dehors: number;
-  conflits_ouverts: number;
-  conflits_hors_tolerance: number;
-  kilos_livres: number;
-  tours_en_attente_retour: number;
-  tours_en_attente_hygiene: number;
-  tours_terminees_aujourdhui: number;
-  tours_par_statut: Record<string, number>;
+  toursAujourdHui: number;
+  toursEnCours: number;
+  toursTermines: number;
+  toursEnAttente: number;
+  totalChauffeurs: number;
+  caissesDepart: number;
+  caissesRetour: number;
+  conflitsTotal: number;
+  conflitsEnAttente: number;
   timestamp: string;
 }
 
@@ -148,8 +148,34 @@ class OfflineService {
         expiresAt: new Date(now.getTime() + duration).toISOString(),
       };
       await AsyncStorage.setItem(key, JSON.stringify(cached));
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[OfflineService] Error writing cache ${key}:`, error);
+      // If storage is full, try to clear old caches
+      if (error?.message?.includes('SQLITE_FULL') || error?.message?.includes('disk is full')) {
+        console.warn('[OfflineService] Storage full, clearing old caches...');
+        await this.clearAllCaches();
+        // Retry once after clearing
+        try {
+          await AsyncStorage.setItem(key, JSON.stringify(cached));
+        } catch (retryError) {
+          console.error('[OfflineService] Still cannot write after clearing cache');
+        }
+      }
+    }
+  }
+
+  // Clear all caches when storage is full
+  async clearAllCaches(): Promise<void> {
+    try {
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.KPI,
+        STORAGE_KEYS.CONFLICTS,
+        STORAGE_KEYS.TOURS,
+        STORAGE_KEYS.NOTIFICATIONS,
+      ]);
+      console.log('[OfflineService] Caches cleared');
+    } catch (error) {
+      console.error('[OfflineService] Error clearing caches:', error);
     }
   }
 
@@ -300,22 +326,20 @@ class OfflineService {
         try {
           switch (action.type) {
             case 'APPROVE_CONFLICT':
-              await api.patch(`/api/conflicts/${action.conflictId}`, {
-                statut: 'PAYEE',
-                notes_direction: action.notes || 'Approuvé (hors-ligne)',
+              await api.post(`/api/conflicts/${action.conflictId}/approve`, {
+                notes: action.notes || 'Approuvé (sync hors-ligne)',
               });
               break;
             case 'REJECT_CONFLICT':
-              await api.patch(`/api/conflicts/${action.conflictId}`, {
-                statut: 'ANNULE',
-                notes_direction: action.notes || 'Annulé (hors-ligne)',
+              await api.post(`/api/conflicts/${action.conflictId}/reject`, {
+                notes: action.notes || 'Annulé (sync hors-ligne)',
               });
               break;
           }
           await this.removeFromQueue(action.id);
           success++;
-        } catch (error) {
-          console.error(`[OfflineService] Failed to sync action ${action.id}:`, error);
+        } catch (error: any) {
+          console.error(`[OfflineService] Failed to sync action ${action.id}:`, error?.message);
           failed++;
         }
       }
@@ -352,12 +376,13 @@ class OfflineService {
 
     if (isOnline) {
       try {
-        await api.patch(`/api/conflicts/${conflictId}`, {
-          statut: 'PAYEE',
-          notes_direction: notes,
+        // Use POST /api/conflicts/:id/approve endpoint
+        await api.post(`/api/conflicts/${conflictId}/approve`, {
+          notes: notes || '',
         });
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        console.error('[OfflineService] Error approving conflict:', error?.message);
         // If online but request failed, queue it
         await this.queueAction({
           type: 'APPROVE_CONFLICT',
@@ -382,12 +407,13 @@ class OfflineService {
 
     if (isOnline) {
       try {
-        await api.patch(`/api/conflicts/${conflictId}`, {
-          statut: 'ANNULE',
-          notes_direction: notes,
+        // Use POST /api/conflicts/:id/reject endpoint
+        await api.post(`/api/conflicts/${conflictId}/reject`, {
+          notes: notes || 'Rejeté par la direction',
         });
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        console.error('[OfflineService] Error rejecting conflict:', error?.message);
         await this.queueAction({
           type: 'REJECT_CONFLICT',
           conflictId,

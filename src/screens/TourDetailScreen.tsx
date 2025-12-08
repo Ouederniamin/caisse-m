@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Image, Platform } from 'react-native';
-import { Text, Card, Title, Button, Chip, Divider, ActivityIndicator } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, Image, Platform, Modal, TouchableOpacity, Dimensions } from 'react-native';
+import { Text, Card, Title, Button, Chip, Divider, ActivityIndicator, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../services/api';
 import MatriculeText from '../components/MatriculeText';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface TourDetailScreenProps {
   route: {
@@ -19,6 +21,9 @@ export default function TourDetailScreen({ route }: TourDetailScreenProps) {
   const { tourId } = route.params;
   const [tour, setTour] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageLabel, setSelectedImageLabel] = useState<string>('');
 
   useEffect(() => {
     loadTourDetails();
@@ -36,6 +41,18 @@ export default function TourDetailScreen({ route }: TourDetailScreenProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openImageModal = (imageUri: string, label: string) => {
+    setSelectedImage(imageUri);
+    setSelectedImageLabel(label);
+    setImageModalVisible(true);
+  };
+
+  const getImageUri = (url: string) => {
+    if (url.startsWith('data:')) return url;
+    if (url.startsWith('http')) return url;
+    return `${api.defaults.baseURL}${url}`;
   };
 
   const getStatusInfo = (status: string) => {
@@ -346,30 +363,38 @@ export default function TourDetailScreen({ route }: TourDetailScreenProps) {
               
               <View style={styles.photosContainer}>
                 {tour.photo_preuve_depart_url && (
-                  <View style={styles.photoItem}>
+                  <TouchableOpacity 
+                    style={styles.photoItem}
+                    onPress={() => openImageModal(getImageUri(tour.photo_preuve_depart_url), 'Photo Départ')}
+                    activeOpacity={0.8}
+                  >
                     <Text style={styles.photoLabel}>📤 Départ</Text>
                     <Image 
-                      source={{ uri: tour.photo_preuve_depart_url.startsWith('http') 
-                        ? tour.photo_preuve_depart_url 
-                        : `${api.defaults.baseURL}${tour.photo_preuve_depart_url}`
-                      }} 
+                      source={{ uri: getImageUri(tour.photo_preuve_depart_url) }} 
                       style={styles.photo}
                       resizeMode="cover"
                     />
-                  </View>
+                    <View style={styles.photoOverlay}>
+                      <MaterialCommunityIcons name="magnify-plus" size={24} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
                 )}
                 {tour.photo_preuve_retour_url && (
-                  <View style={styles.photoItem}>
+                  <TouchableOpacity 
+                    style={styles.photoItem}
+                    onPress={() => openImageModal(getImageUri(tour.photo_preuve_retour_url), 'Photo Retour')}
+                    activeOpacity={0.8}
+                  >
                     <Text style={styles.photoLabel}>📥 Retour</Text>
                     <Image 
-                      source={{ uri: tour.photo_preuve_retour_url.startsWith('http') 
-                        ? tour.photo_preuve_retour_url 
-                        : `${api.defaults.baseURL}${tour.photo_preuve_retour_url}`
-                      }} 
+                      source={{ uri: getImageUri(tour.photo_preuve_retour_url) }} 
                       style={styles.photo}
                       resizeMode="cover"
                     />
-                  </View>
+                    <View style={styles.photoOverlay}>
+                      <MaterialCommunityIcons name="magnify-plus" size={24} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
                 )}
               </View>
             </Card.Content>
@@ -406,6 +431,33 @@ export default function TourDetailScreen({ route }: TourDetailScreenProps) {
         {/* Bottom spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View style={styles.imageModalContainer}>
+          <View style={styles.imageModalHeader}>
+            <Text style={styles.imageModalTitle}>{selectedImageLabel}</Text>
+            <IconButton
+              icon="close"
+              iconColor="#fff"
+              size={28}
+              onPress={() => setImageModalVisible(false)}
+            />
+          </View>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullScreenImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -668,6 +720,7 @@ const styles = StyleSheet.create({
   },
   photoItem: {
     flex: 1,
+    position: 'relative',
   },
   photoLabel: {
     fontSize: 14,
@@ -681,6 +734,40 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 12,
     backgroundColor: '#E5E7EB',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 6,
+  },
+  imageModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalHeader: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  imageModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  fullScreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.7,
   },
   actionsContainer: {
     marginTop: 8,

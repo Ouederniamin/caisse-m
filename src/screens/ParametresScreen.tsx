@@ -63,7 +63,8 @@ export default function ParametresScreen() {
     const doLogout = async () => {
       try {
         await signOut();
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        // Navigation is handled automatically by AuthContext - when userToken becomes null,
+        // the App.tsx conditional rendering will show the Login screen
       } catch (error) {
         console.error('Logout error:', error);
         if (Platform.OS === 'web') {
