@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "caisse-mobile",
-    "slug": "caisse-mobile",
+    "slug": "el-firma",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,8 +23,9 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "ACCESS_WIFI_STATE",
-        "CAMERA"
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -38,6 +39,12 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "04f26fe6-5867-42c9-9c38-90f72021d53f"
+      }
+    },
+    "owner": "ngcoding"
   }
 }
