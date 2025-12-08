@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { API_URL } from "../config";
 
 // Define the upload router type locally to avoid import issues
 // This should match the backend's uploadRouter structure
@@ -7,14 +8,8 @@ type UploadRouter = {
   hygieneImageUploader: any;
 };
 
-// Server URL for UploadThing
-const getServerUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:3001';
-  }
-  // For native, use the local network IP from env
-  return process.env.EXPO_PUBLIC_SERVER_URL || 'http://10.252.169.215:3001';
-};
+// Server URL for UploadThing - use centralized config
+const getServerUrl = () => API_URL;
 
 // Only generate React Native helpers on native platforms (not web)
 // Web will use base64 approach instead

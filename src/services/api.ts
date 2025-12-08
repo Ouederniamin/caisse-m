@@ -1,14 +1,8 @@
 import axios from 'axios';
 import storage from '../utils/storage';
-import { Platform } from 'react-native';
+import { API_URL } from '../config';
 
-// Backend API (Fastify)
-// On web: use localhost (same machine)
-// On native: use local network IP (must be on same network)
-const API_URL = Platform.OS === 'web' 
-  ? 'http://localhost:3001' 
-  : 'http://10.89.164.215:3001'; 
-
+// Use centralized API_URL from config (supports EXPO_PUBLIC_API_URL env var)
 const api = axios.create({
   baseURL: API_URL,
   headers: {
