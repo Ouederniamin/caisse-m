@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Image } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Image, TouchableOpacity, Platform } from 'react-native';
 import {
   Text,
   Card,
-  Title,
   Button,
   TextInput,
   Modal,
   Portal,
-  Paragraph,
-  Chip,
 } from 'react-native-paper';
-import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
 import api from '../services/api';
+import { API_URL } from '../config';
 import MatriculeText from '../components/MatriculeText';
+import PhotoUpload from '../components/PhotoUpload';
+import { useAuth } from '../context/AuthContext';
+
+// Helper to get full image URL
+const getImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  // If already a full URL or data URI, return as-is
+  if (url.startsWith('http') || url.startsWith('data:')) {
+    return url;
+  }
+  // Otherwise, prepend the API URL
+  return `${API_URL}${url}`;
+};
 
 interface AgentHygieneDetailScreenProps {
   route: any;
@@ -23,9 +32,10 @@ interface AgentHygieneDetailScreenProps {
 
 export default function AgentHygieneDetailScreen({ route, navigation }: AgentHygieneDetailScreenProps) {
   const { tourId } = route.params;
+  const { user } = useAuth();
   const [tour, setTour] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [decision, setDecision] = useState<'APPROUVE' | 'REJETE' | null>(null);
@@ -35,59 +45,74 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
     loadTour();
   }, []);
 
+  const showAlert = (title: string, message: string, onOk?: () => void) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+      if (onOk) onOk();
+    } else {
+      Alert.alert(title, message, [{ text: 'OK', onPress: onOk }]);
+    }
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const loadTour = async () => {
     try {
       const response = await api.get(`/api/tours/${tourId}`);
+      console.log('[HygieneDetail] Tour loaded:', response.data);
+      console.log('[HygieneDetail] Photo retour URL:', response.data?.photo_preuve_retour_url);
+      console.log('[HygieneDetail] Full image URL:', getImageUrl(response.data?.photo_preuve_retour_url));
       setTour(response.data);
     } catch (error: any) {
-      Alert.alert('Erreur', 'Impossible de charger les détails de la tournée');
-      navigation.goBack();
+      showAlert('Erreur', 'Impossible de charger les détails de la tournée', () => navigation.goBack());
     } finally {
       setLoading(false);
     }
   };
 
-  const takePhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      Alert.alert("Permission refusée", "Vous devez autoriser l'accès à la caméra.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.7,
-    });
-
-    if (!result.canceled) {
-      setPhotos([...photos, result.assets[0].uri]);
-      Alert.alert('✅ Photo Ajoutée', `${photos.length + 1} photo(s) capturée(s)`);
-    }
+  const handlePhotoUpload = (url: string) => {
+    setPhotoUrls(prev => [...prev, url]);
+    showAlert('✅ Photo Ajoutée', `${photoUrls.length + 1} photo(s) uploadée(s)`);
   };
 
   const removePhoto = (index: number) => {
-    Alert.alert(
-      'Supprimer Photo',
-      'Êtes-vous sûr de vouloir supprimer cette photo?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => {
-            const newPhotos = photos.filter((_, i) => i !== index);
-            setPhotos(newPhotos);
+    if (Platform.OS === 'web') {
+      if (window.confirm('Supprimer cette photo?')) {
+        const newPhotos = photoUrls.filter((_, i) => i !== index);
+        setPhotoUrls(newPhotos);
+      }
+    } else {
+      Alert.alert(
+        'Supprimer Photo',
+        'Êtes-vous sûr de vouloir supprimer cette photo?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer',
+            style: 'destructive',
+            onPress: () => {
+              const newPhotos = photoUrls.filter((_, i) => i !== index);
+              setPhotoUrls(newPhotos);
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleDecision = (status: 'APPROUVE' | 'REJETE') => {
-    if (photos.length === 0) {
-      Alert.alert('Photos Requises', 'Veuillez prendre au moins une photo avant de valider');
+    if (photoUrls.length === 0) {
+      showAlert('Photos Requises', 'Veuillez prendre au moins une photo avant de valider');
       return;
     }
 
@@ -100,34 +125,20 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
 
     setSubmitting(true);
     try {
-      // In production, upload photos to cloud storage first
-      const photoUrls = photos.map(() => 'uploaded_photo_url_placeholder');
-
       await api.patch(`/api/tours/${tourId}/hygiene`, {
+        agentHygieneId: user?.id,
         photos_hygiene_urls: photoUrls,
         notes_hygiene: notes,
         statut_hygiene: decision,
       });
 
       const message = decision === 'APPROUVE'
-        ? '✅ Tournée Approuvée\n\nLa tournée est maintenant terminée.'
-        : '❌ Tournée Rejetée\n\nLa tournée est marquée comme terminée avec un rejet.';
+        ? 'La tournée est maintenant terminée.'
+        : 'La tournée est marquée comme terminée avec un rejet.';
 
-      Alert.alert(
-        'Hygiène Validée',
-        message,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      showAlert('Hygiène Validée', message, () => navigation.goBack());
     } catch (error: any) {
-      Alert.alert(
-        'Erreur',
-        error.response?.data?.error || 'Impossible d\'enregistrer la validation'
-      );
+      showAlert('Erreur', error.response?.data?.error || 'Impossible d\'enregistrer la validation');
     } finally {
       setSubmitting(false);
       setShowConfirmModal(false);
@@ -137,213 +148,232 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
   if (loading || !tour) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Chargement...</Text>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Button
-          icon="arrow-left"
-          mode="text"
-          textColor="#fff"
-          onPress={() => navigation.goBack()}
-        >
-          Retour
-        </Button>
-        <Title style={styles.headerTitle}>🧤 Contrôle Hygiène</Title>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>← Retour</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>🧤 Contrôle Hygiène</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Informations Tournée</Title>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Chauffeur:</Text>
-              <Text style={styles.value}>{tour.driver.nom_complet}</Text>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Driver & Vehicle Info */}
+        <View style={styles.driverCard}>
+          <View style={styles.driverHeader}>
+            <Text style={styles.driverName}>{tour.driver?.nom_complet || 'Chauffeur'}</Text>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeText}>À contrôler</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Matricule:</Text>
-              <View style={styles.matriculeContainer}>
-                <MatriculeText matricule={tour.matricule_vehicule} size="small" />
-              </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Secteur:</Text>
-              <Text style={styles.value}>{tour.secteur.nom}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Caisses Retour:</Text>
-              <Text style={styles.value}>{tour.nbre_caisses_retour || 'N/A'}</Text>
-            </View>
-          </Card.Content>
-        </Card>
+          </View>
+          <MatriculeText matricule={tour.matricule_vehicule} size="small" />
+        </View>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Photos d'Inspection</Title>
-            <Paragraph style={styles.instruction}>
-              Prenez plusieurs photos du matériel retourné
-            </Paragraph>
+        {/* Tour Details Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📋 Détails Tournée</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Secteur</Text>
+              <Text style={styles.infoValue}>{tour.secteur?.nom || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Caisses départ</Text>
+              <Text style={styles.infoValue}>{tour.nbre_caisses_depart}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Caisses retour</Text>
+              <Text style={styles.infoValue}>{tour.nbre_caisses_retour || 0}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Poids départ</Text>
+              <Text style={styles.infoValue}>{tour.poids_net_produits_depart?.toFixed(1) || 0} kg</Text>
+            </View>
+          </View>
+        </View>
 
-            <Button
-              mode="contained"
-              onPress={takePhoto}
-              icon="camera"
-              style={styles.photoButton}
-            >
-              Ajouter Photo ({photos.length})
-            </Button>
+        {/* Control Agent Info */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👤 Agent de Contrôle</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Nom</Text>
+              <Text style={styles.infoValue}>{tour.agentControle?.name || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Créée le</Text>
+              <Text style={styles.infoValue}>{formatDate(tour.createdAt)}</Text>
+            </View>
+          </View>
+        </View>
 
-            {photos.length > 0 && (
-              <View style={styles.photosGrid}>
-                {photos.map((uri, index) => (
-                  <View key={index} style={styles.photoContainer}>
-                    <Image source={{ uri }} style={styles.photoThumbnail} />
-                    <Button
-                      mode="text"
-                      onPress={() => removePhoto(index)}
-                      textColor="#F44336"
-                      style={styles.removeButton}
-                    >
-                      Supprimer
-                    </Button>
+        {/* Security Info */}
+        {(tour.securiteSortie || tour.securiteEntree) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🛡️ Sécurité</Text>
+            <View style={styles.infoCard}>
+              {tour.securiteSortie && (
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Sortie par</Text>
+                    <Text style={styles.infoValue}>{tour.securiteSortie?.name || 'N/A'}</Text>
                   </View>
-                ))}
-              </View>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Notes d'Inspection</Title>
-            <Paragraph style={styles.instruction}>
-              Ajoutez des observations sur l'état du matériel
-            </Paragraph>
-
-            <TextInput
-              label="Notes (optionnel)"
-              value={notes}
-              onChangeText={setNotes}
-              mode="outlined"
-              multiline
-              numberOfLines={4}
-              placeholder="État général, anomalies détectées, recommandations..."
-              style={styles.notesInput}
-            />
-          </Card.Content>
-        </Card>
-
-        <Card style={[styles.card, styles.decisionCard]}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Décision</Title>
-            <View style={styles.decisionButtons}>
-              <Button
-                mode="contained"
-                onPress={() => handleDecision('REJETE')}
-                icon="close-circle"
-                style={[styles.decisionButton, styles.rejectButton]}
-                disabled={photos.length === 0}
-              >
-                Rejeter
-              </Button>
-              <Button
-                mode="contained"
-                onPress={() => handleDecision('APPROUVE')}
-                icon="check-circle"
-                style={[styles.decisionButton, styles.approveButton]}
-                disabled={photos.length === 0}
-              >
-                Approuver
-              </Button>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Date sortie</Text>
+                    <Text style={styles.infoValue}>{formatDate(tour.date_sortie_securite)}</Text>
+                  </View>
+                </>
+              )}
+              {tour.securiteEntree && (
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Entrée par</Text>
+                    <Text style={styles.infoValue}>{tour.securiteEntree?.name || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Date entrée</Text>
+                    <Text style={styles.infoValue}>{formatDate(tour.date_entree_securite)}</Text>
+                  </View>
+                </>
+              )}
+              {tour.poids_brut_securite_sortie && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Poids brut sortie</Text>
+                  <Text style={styles.infoValue}>{tour.poids_brut_securite_sortie.toFixed(1)} kg</Text>
+                </View>
+              )}
+              {tour.poids_brut_securite_retour && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Poids brut retour</Text>
+                  <Text style={styles.infoValue}>{tour.poids_brut_securite_retour.toFixed(1)} kg</Text>
+                </View>
+              )}
             </View>
-          </Card.Content>
-        </Card>
+          </View>
+        )}
 
-        <Card style={[styles.card, styles.infoCard]}>
-          <Card.Content>
-            <Paragraph style={styles.infoText}>
-              ℹ️ Au moins une photo est requise pour valider le contrôle d'hygiène.
-              {'\n\n'}
-              • Approuver: Le matériel est propre, la tournée sera terminée
-              {'\n'}
-              • Rejeter: Le matériel nécessite un nettoyage supplémentaire
-            </Paragraph>
-          </Card.Content>
-        </Card>
+        {/* Return Photo */}
+        {tour.photo_preuve_retour_url && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📸 Photo Retour (Agent Contrôle)</Text>
+            <Image 
+              source={{ uri: getImageUrl(tour.photo_preuve_retour_url) || '' }} 
+              style={styles.returnPhoto} 
+            />
+          </View>
+        )}
+
+        {/* Hygiene Photos Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🧹 Photos Inspection</Text>
+          <Text style={styles.sectionSubtitle}>Prenez plusieurs photos du matériel retourné</Text>
+          
+          <PhotoUpload
+            onUploadComplete={handlePhotoUpload}
+            type="hygiene"
+            tourId={tourId}
+            label="Photos hygiène"
+            multiple={true}
+            existingPhotos={photoUrls}
+            onPhotosChange={setPhotoUrls}
+          />
+        </View>
+
+        {/* Notes Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📝 Notes d'Inspection</Text>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            mode="outlined"
+            multiline
+            numberOfLines={3}
+            placeholder="État général, anomalies détectées..."
+            style={styles.notesInput}
+            outlineColor="#ddd"
+            activeOutlineColor="#4CAF50"
+          />
+        </View>
+
+        {/* Decision Buttons */}
+        <View style={styles.decisionSection}>
+          <Text style={styles.sectionTitle}>✅ Décision</Text>
+          {photoUrls.length === 0 && (
+            <Text style={styles.warningText}>⚠️ Au moins une photo requise</Text>
+          )}
+          <View style={styles.decisionButtons}>
+            <TouchableOpacity
+              style={[styles.decisionBtn, styles.rejectBtn, photoUrls.length === 0 && styles.disabledBtn]}
+              onPress={() => handleDecision('REJETE')}
+              disabled={photoUrls.length === 0}
+            >
+              <Text style={styles.decisionBtnText}>❌ Rejeter</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.decisionBtn, styles.approveBtn, photoUrls.length === 0 && styles.disabledBtn]}
+              onPress={() => handleDecision('APPROUVE')}
+              disabled={photoUrls.length === 0}
+            >
+              <Text style={styles.decisionBtnText}>✅ Approuver</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Info Card */}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoBoxText}>
+            ℹ️ Approuver = matériel propre, tournée terminée{'\n'}
+            Rejeter = nettoyage supplémentaire requis
+          </Text>
+        </View>
       </ScrollView>
 
+      {/* Confirmation Modal */}
       <Portal>
         <Modal
           visible={showConfirmModal}
           onDismiss={() => setShowConfirmModal(false)}
           contentContainerStyle={styles.modalContainer}
         >
-          <Card>
-            <Card.Content>
-              <Title style={[
-                styles.modalTitle,
-                decision === 'APPROUVE' ? styles.approveColor : styles.rejectColor
-              ]}>
-                {decision === 'APPROUVE' ? '✅ Approuver' : '⚠️ Rejeter'}
-              </Title>
-              
-              <View style={styles.modalSummary}>
-                <View style={styles.modalRow}>
-                  <Text style={styles.modalLabel}>Photos prises:</Text>
-                  <Text style={styles.modalValue}>{photos.length}</Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={styles.modalLabel}>Notes:</Text>
-                  <Text style={styles.modalValue}>
-                    {notes ? 'Oui' : 'Non'}
-                  </Text>
-                </View>
-                <View style={styles.modalRow}>
-                  <Text style={styles.modalLabel}>Décision:</Text>
-                  <Text style={[
-                    styles.modalValue,
-                    styles.bold,
-                    decision === 'APPROUVE' ? styles.approveColor : styles.rejectColor
-                  ]}>
-                    {decision === 'APPROUVE' ? 'APPROUVÉ' : 'REJETÉ'}
-                  </Text>
-                </View>
-              </View>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, decision === 'APPROUVE' ? styles.approveColor : styles.rejectColor]}>
+              {decision === 'APPROUVE' ? '✅ Approuver' : '❌ Rejeter'}
+            </Text>
+            
+            <View style={styles.modalSummary}>
+              <Text style={styles.modalSummaryText}>Photos: {photoUrls.length}</Text>
+              <Text style={styles.modalSummaryText}>Notes: {notes ? 'Oui' : 'Non'}</Text>
+            </View>
 
-              <Paragraph style={styles.modalMessage}>
-                {decision === 'APPROUVE'
-                  ? 'La tournée sera marquée comme terminée.'
-                  : 'Le matériel devra être nettoyé à nouveau.'}
-              </Paragraph>
+            <Text style={styles.modalMessage}>
+              {decision === 'APPROUVE'
+                ? 'La tournée sera marquée comme terminée.'
+                : 'Le matériel devra être nettoyé à nouveau.'}
+            </Text>
 
-              <View style={styles.modalActions}>
-                <Button
-                  mode="outlined"
-                  onPress={() => setShowConfirmModal(false)}
-                  style={styles.modalButton}
-                  disabled={submitting}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={handleSubmit}
-                  style={[
-                    styles.modalButton,
-                    decision === 'APPROUVE' ? styles.approveButton : styles.rejectButton
-                  ]}
-                  loading={submitting}
-                  disabled={submitting}
-                >
-                  Confirmer
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => setShowConfirmModal(false)}
+                disabled={submitting}
+              >
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, decision === 'APPROUVE' ? styles.approveBtn : styles.rejectBtn]}
+                onPress={handleSubmit}
+                disabled={submitting}
+              >
+                <Text style={styles.modalBtnText}>{submitting ? 'Envoi...' : 'Confirmer'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
       </Portal>
     </View>
@@ -359,15 +389,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#4CAF50',
     paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 10,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    elevation: 4,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  backButton: {
+    marginBottom: 8,
+  },
+  backText: {
+    color: '#fff',
+    fontSize: 16,
   },
   headerTitle: {
     color: '#fff',
@@ -375,104 +416,174 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: 20,
   },
-  card: {
-    marginBottom: 20,
-    elevation: 3,
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
   },
-  cardTitle: {
+  driverCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    elevation: 2,
+  },
+  driverHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  driverName: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 15,
     color: '#333',
+  },
+  statusBadge: {
+    backgroundColor: '#FFC107',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 10,
+  },
+  infoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
-  label: {
-    fontSize: 14,
+  infoLabel: {
+    fontSize: 13,
     color: '#666',
+  },
+  infoValue: {
+    fontSize: 13,
     fontWeight: '600',
-  },
-  value: {
-    fontSize: 14,
     color: '#333',
-    fontWeight: 'bold',
   },
-  matriculeContainer: {
-    alignItems: 'flex-end',
-  },
-  instruction: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
-  },
-  photoButton: {
-    backgroundColor: '#4CAF50',
-    marginTop: 10,
+  returnPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 10,
+    resizeMode: 'cover',
   },
   photosGrid: {
-    marginTop: 20,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 12,
     gap: 10,
   },
   photoContainer: {
     width: '48%',
-    marginBottom: 10,
+    position: 'relative',
   },
   photoThumbnail: {
     width: '100%',
-    height: 120,
+    height: 100,
     borderRadius: 8,
   },
-  removeButton: {
-    marginTop: 5,
+  removePhotoBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(244,67,54,0.9)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removePhotoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   notesInput: {
-    marginTop: 10,
-  },
-  decisionCard: {
     backgroundColor: '#fff',
+  },
+  decisionSection: {
+    marginBottom: 16,
+  },
+  warningText: {
+    color: '#F57C00',
+    fontSize: 13,
+    marginBottom: 10,
+    textAlign: 'center',
   },
   decisionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
-  decisionButton: {
+  decisionBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
   },
-  approveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  rejectButton: {
+  rejectBtn: {
     backgroundColor: '#F44336',
   },
-  infoCard: {
-    backgroundColor: '#E8F5E9',
+  approveBtn: {
+    backgroundColor: '#4CAF50',
   },
-  infoText: {
+  disabledBtn: {
+    opacity: 0.5,
+  },
+  decisionBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  infoBox: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+  },
+  infoBoxText: {
     fontSize: 13,
     color: '#2E7D32',
     lineHeight: 20,
   },
   modalContainer: {
+    margin: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 20,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   approveColor: {
     color: '#4CAF50',
@@ -482,26 +593,15 @@ const styles = StyleSheet.create({
   },
   modalSummary: {
     backgroundColor: '#f5f5f5',
-    padding: 15,
+    padding: 12,
     borderRadius: 8,
-    marginBottom: 15,
-  },
-  modalRow: {
+    marginBottom: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    justifyContent: 'space-around',
   },
-  modalLabel: {
+  modalSummaryText: {
     fontSize: 14,
-    color: '#666',
-  },
-  modalValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
     color: '#333',
-  },
-  bold: {
-    fontSize: 16,
   },
   modalMessage: {
     fontSize: 14,
@@ -511,11 +611,27 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
+    gap: 12,
   },
-  modalButton: {
+  modalBtn: {
     flex: 1,
-    marginHorizontal: 5,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelBtn: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });

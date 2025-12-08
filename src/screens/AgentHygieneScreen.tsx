@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, ScrollView, Alert, RefreshControl, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
-import { Text, Card, Title, Button, Chip, IconButton } from 'react-native-paper';
+import { StyleSheet, View, ScrollView, Alert, RefreshControl, TextInput as RNTextInput, TouchableOpacity, Platform } from 'react-native';
+import { Text, Card } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
@@ -29,7 +29,12 @@ export default function AgentHygieneScreen() {
       setTours(data);
       setFilteredTours(data);
     } catch (error: any) {
-      Alert.alert('Erreur', 'Impossible de charger les tournées');
+      const msg = 'Impossible de charger les tournées';
+      if (Platform.OS === 'web') {
+        window.alert('Erreur: ' + msg);
+      } else {
+        Alert.alert('Erreur', msg);
+      }
       console.error('Load tours error:', error);
     } finally {
       setLoading(false);
@@ -67,7 +72,12 @@ export default function AgentHygieneScreen() {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       
       if (permissionResult.granted === false) {
-        Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la caméra pour utiliser cette fonctionnalité.');
+        const msg = 'Vous devez autoriser l\'accès à la caméra pour utiliser cette fonctionnalité.';
+        if (Platform.OS === 'web') {
+          window.alert('Permission refusée: ' + msg);
+        } else {
+          Alert.alert('Permission refusée', msg);
+        }
         return;
       }
 
@@ -77,15 +87,20 @@ export default function AgentHygieneScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        Alert.alert(
-          'Reconnaissance OCR',
-          'La reconnaissance automatique de matricule sera disponible prochainement.\n\nVeuillez saisir le matricule manuellement pour le moment.',
-          [{ text: 'OK' }]
-        );
+        const msg = 'La reconnaissance automatique de matricule sera disponible prochainement.\n\nVeuillez saisir le matricule manuellement pour le moment.';
+        if (Platform.OS === 'web') {
+          window.alert('Reconnaissance OCR\n\n' + msg);
+        } else {
+          Alert.alert('Reconnaissance OCR', msg, [{ text: 'OK' }]);
+        }
       }
     } catch (error) {
       console.error('Camera error:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder à la caméra.');
+      if (Platform.OS === 'web') {
+        window.alert('Erreur: Impossible d\'accéder à la caméra.');
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'accéder à la caméra.');
+      }
     }
   };
 
@@ -94,13 +109,20 @@ export default function AgentHygieneScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Title style={styles.headerTitle}>🧤 Hygiène</Title>
+        <Text style={styles.headerTitle}>🧤 Hygiène</Text>
         <Text style={styles.headerSubtitle}>Contrôles d'hygiène</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={loadTours} />
+        }
+      >
+        {/* Search Card */}
         <Card style={styles.searchCard}>
-          <Card.Content>
+          <Card.Content style={styles.searchCardContent}>
             <Text style={styles.searchLabel}>🔍 Recherche par matricule</Text>
             
             <View style={styles.searchContainer}>
@@ -138,88 +160,51 @@ export default function AgentHygieneScreen() {
                 </View>
               </View>
               
-              <View style={styles.searchActions}>
-                <IconButton
-                  icon="camera"
-                  size={28}
-                  iconColor="#4CAF50"
-                  style={styles.cameraButton}
-                  onPress={handleCameraSearch}
-                />
-                {searchQuery && (
-                  <IconButton
-                    icon="close-circle"
-                    size={28}
-                    iconColor="#F44336"
-                    style={styles.clearButton}
-                    onPress={clearSearch}
-                  />
-                )}
-              </View>
+              <TouchableOpacity style={styles.cameraButton} onPress={handleCameraSearch}>
+                <Text style={styles.cameraIcon}>📷</Text>
+              </TouchableOpacity>
             </View>
           </Card.Content>
         </Card>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={loadTours} />
-        }
-      >
+        {/* Empty State */}
         {displayTours.length === 0 && !loading && (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <Text style={styles.emptyText}>
-                ✅ Aucune tournée en attente d'inspection hygiène
-              </Text>
-            </Card.Content>
-          </Card>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>✅</Text>
+            <Text style={styles.emptyText}>Aucune tournée en attente</Text>
+            <Text style={styles.emptySubtext}>d'inspection hygiène</Text>
+          </View>
         )}
 
+        {/* Tour Cards */}
         {displayTours.map((tour: any) => (
-          <Card key={tour.id} style={styles.tourCard}>
-            <Card.Content>
-              <View style={styles.tourHeader}>
-                <View style={styles.tourHeaderLeft}>
-                  <Title style={styles.tourTitle}>{tour.driver.nom_complet}</Title>
-                  <View style={styles.matriculePlateContainer}>
-                    <MatriculeText matricule={tour.matricule_vehicule} size="medium" />
-                  </View>
+          <TouchableOpacity 
+            key={tour.id} 
+            style={styles.tourCard}
+            onPress={() => navigation.navigate('AgentHygieneDetail', { tourId: tour.id })}
+            activeOpacity={0.7}
+          >
+            <View style={styles.tourCardContent}>
+              {/* Left: Driver info */}
+              <View style={styles.tourLeft}>
+                <Text style={styles.driverName} numberOfLines={1}>{tour.driver?.nom_complet || 'Chauffeur'}</Text>
+                <MatriculeText matricule={tour.matricule_vehicule} size="small" />
+              </View>
+              
+              {/* Right: Status */}
+              <View style={styles.tourRight}>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeText}>En attente</Text>
                 </View>
-                <Chip
-                  style={styles.statusChip}
-                  textStyle={styles.statusText}
-                >
-                  En attente
-                </Chip>
               </View>
-
-              <View style={styles.tourDetails}>
-                <Text style={styles.detailText}>
-                  🗺️ {tour.secteur.nom}
-                </Text>
-                <Text style={styles.detailText}>
-                  📦 Retour: {tour.nbre_caisses_retour || 'N/A'} caisses
-                </Text>
-                {tour.conflicts && tour.conflicts.length > 0 && (
-                  <Text style={styles.conflictText}>
-                    ⚠️ {tour.conflicts.length} conflit(s)
-                  </Text>
-                )}
-              </View>
-            </Card.Content>
-
-            <Card.Actions style={styles.actions}>
-              <Button
-                mode="contained"
-                icon="clipboard-check"
-                style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-                onPress={() => navigation.navigate('AgentHygieneDetail', { tourId: tour.id })}
-              >
-                Contrôler
-              </Button>
-            </Card.Actions>
-          </Card>
+            </View>
+            
+            {/* Bottom row: Details */}
+            <View style={styles.tourBottom}>
+              <Text style={styles.detailText}>🗺️ {tour.secteur?.nom || 'N/A'}</Text>
+              <Text style={styles.detailText}>📦 Retour: {tour.nbre_caisses_retour || 0} caisses</Text>
+            </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
@@ -234,38 +219,46 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#4CAF50',
     paddingTop: 50,
-    paddingBottom: 25,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
     elevation: 4,
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   headerSubtitle: {
     color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    marginTop: 5,
+    fontSize: 13,
+    marginTop: 4,
     textAlign: 'center',
   },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: 20,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
   },
   searchCard: {
-    marginBottom: 15,
+    marginBottom: 16,
     elevation: 3,
     backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  searchCardContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   searchLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -281,23 +274,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
-    marginRight: 8,
+    marginRight: 10,
   },
   plateSearchInner: {
     backgroundColor: '#000',
     borderRadius: 6,
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 6,
-    minHeight: 48,
+    minHeight: 44,
   },
   leftSearchInput: {
-    width: 65,
-    fontSize: 26,
+    width: 55,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -306,18 +299,16 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   arabicSearchSection: {
-    paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
   },
   arabicSearchText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    letterSpacing: 1,
   },
   rightSearchInput: {
-    width: 85,
-    fontSize: 26,
+    width: 70,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -325,84 +316,89 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     fontFamily: 'monospace',
   },
-  searchActions: {
-    flexDirection: 'column',
+  cameraButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cameraButton: {
-    margin: 0,
+  cameraIcon: {
+    fontSize: 22,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
     backgroundColor: '#E8F5E9',
-    marginBottom: 4,
-  },
-  clearButton: {
-    margin: 0,
-    backgroundColor: '#FFEBEE',
-    marginTop: 4,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  emptyCard: {
+    borderRadius: 12,
     marginTop: 20,
-    backgroundColor: '#E8F5E9',
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12,
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#2E7D32',
     fontSize: 16,
     fontWeight: '600',
+    color: '#2E7D32',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#4CAF50',
+    marginTop: 4,
   },
   tourCard: {
-    marginBottom: 15,
-    elevation: 3,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  tourHeader: {
+  tourCardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 15,
   },
-  tourTitle: {
-    fontSize: 18,
+  tourLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  driverName: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  tourHeaderLeft: {
-    flex: 1,
+  tourRight: {
+    alignItems: 'flex-end',
   },
-  matriculePlateContainer: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  statusChip: {
+  statusBadge: {
     backgroundColor: '#FFC107',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  statusText: {
+  statusBadgeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
-  tourDetails: {
+  tourBottom: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    gap: 12,
   },
   detailText: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 5,
-  },
-  conflictText: {
-    fontSize: 14,
-    color: '#F44336',
-    fontWeight: 'bold',
-    marginTop: 5,
-  },
-  actions: {
-    justifyContent: 'flex-end',
-    paddingRight: 10,
-  },
-  actionButton: {
-    marginLeft: 10,
+    fontSize: 13,
+    color: '#666',
   },
 });

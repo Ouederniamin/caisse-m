@@ -50,12 +50,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <View style={[styles.headerContainer, { backgroundColor: theme.colors.primary }]}>
+      <View style={styles.headerContainer}>
         <View style={styles.logoCircle}>
-          <MaterialCommunityIcons name="package-variant-closed" size={48} color={theme.colors.primary} />
+          <MaterialCommunityIcons name="barn" size={52} color="#2E7D32" />
         </View>
-        <Title style={styles.appTitle}>Caisse Management</Title>
-        <Text style={styles.appSubtitle}>Solution Professionnelle B2B</Text>
+        <Title style={styles.appTitle}>El Firma</Title>
+        <Text style={styles.appSubtitle}>Management System</Text>
       </View>
 
       <Surface style={styles.formSurface} elevation={4}>
@@ -114,23 +114,27 @@ export default function LoginScreen() {
 
           <View style={styles.rolesContainer}>
             <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="shield-check" size={20} color="#666" />
+              <MaterialCommunityIcons name="shield-check" size={22} color="#2E7D32" />
               <Text style={styles.roleText}>Contrôle</Text>
             </View>
             <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="spray-bottle" size={20} color="#666" />
+              <MaterialCommunityIcons name="spray-bottle" size={22} color="#2E7D32" />
               <Text style={styles.roleText}>Hygiène</Text>
             </View>
             <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="security" size={20} color="#666" />
+              <MaterialCommunityIcons name="security" size={22} color="#2E7D32" />
               <Text style={styles.roleText}>Sécurité</Text>
+            </View>
+            <View style={styles.roleItem}>
+              <MaterialCommunityIcons name="chart-line" size={22} color="#2E7D32" />
+              <Text style={styles.roleText}>Direction</Text>
             </View>
           </View>
         </ScrollView>
       </Surface>
       
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© 2025 Caisse Management System</Text>
+        <Text style={styles.footerText}>© 2025 El Firma - La Ferme</Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -142,12 +146,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f2f5',
   },
   headerContainer: {
-    flex: 0.45,
+    flex: 0.42,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 40,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingBottom: 50,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    backgroundColor: '#2E7D32',
   },
   logoCircle: {
     width: 100,
@@ -156,95 +161,111 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 8,
+    marginBottom: 20,
+    elevation: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
   appTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 38,
+    fontWeight: '800',
     color: 'white',
-    letterSpacing: 0.5,
+    letterSpacing: 2,
   },
   appSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 4,
+    marginTop: 6,
     fontWeight: '500',
+    letterSpacing: 1,
   },
   formSurface: {
     flex: 1,
-    marginHorizontal: 20,
-    marginTop: -40,
-    marginBottom: 20,
-    borderRadius: 20,
+    marginHorizontal: 24,
+    marginTop: -30,
+    marginBottom: 16,
+    borderRadius: 24,
     backgroundColor: 'white',
     overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   scrollContent: {
-    padding: 24,
+    padding: 28,
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 6,
     textAlign: 'center',
+    color: '#2E7D32',
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
+    color: '#888',
+    marginBottom: 28,
     textAlign: 'center',
   },
   input: {
-    marginBottom: 16,
-    backgroundColor: 'white',
+    marginBottom: 18,
+    backgroundColor: '#FAFAFA',
   },
   loginButton: {
-    marginTop: 8,
-    borderRadius: 10,
-    elevation: 2,
+    marginTop: 12,
+    borderRadius: 14,
+    elevation: 4,
+    backgroundColor: '#2E7D32',
   },
   loginButtonContent: {
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   loginButtonLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    color: 'white',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 28,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#E8E8E8',
   },
   dividerText: {
-    marginHorizontal: 10,
-    color: '#999',
+    marginHorizontal: 14,
+    color: '#AAA',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   rolesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 10,
+    paddingHorizontal: 10,
   },
   roleItem: {
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
   roleText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#555',
+    fontWeight: '600',
   },
   footer: {
     paddingBottom: 20,

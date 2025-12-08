@@ -36,7 +36,8 @@
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take proof photos."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

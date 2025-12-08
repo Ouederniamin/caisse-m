@@ -21,7 +21,7 @@ export default function HomeScreen() {
     switch(role) {
       case 'AGENT_CONTROLE': return '#2196F3';
       case 'AGENT_HYGIENE': return '#4CAF50';
-      case 'SECURITE': return '#FF9800';
+      case 'SECURITE': return '#3F51B5';
       case 'DIRECTION': return '#9C27B0';
       case 'admin': return '#9C27B0';
       default: return '#757575';

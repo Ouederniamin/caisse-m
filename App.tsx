@@ -13,11 +13,14 @@ import PeseeEntreeScreen from './src/screens/PeseeEntreeScreen';
 import AgentControleScreen from './src/screens/AgentControleScreen';
 import AgentControleCreateTourScreen from './src/screens/AgentControleCreateTourScreen';
 import AgentControleRetourScreen from './src/screens/AgentControleRetourScreen';
+import TourDetailScreen from './src/screens/TourDetailScreen';
 import AgentHygieneScreen from './src/screens/AgentHygieneScreen';
 import AgentHygieneDetailScreen from './src/screens/AgentHygieneDetailScreen';
+import ConflictDetailScreen from './src/screens/ConflictDetailScreen';
 import DirectionScreen from './src/screens/DirectionScreen';
 import MainTabs from './src/navigation/MainTabs';
 import api from './src/services/api';
+import pushNotificationService from './src/services/pushNotificationService';
 
 const Stack = createNativeStackNavigator();
 
@@ -70,13 +73,40 @@ const lightTheme = {
 };
 
 function AppContent() {
-  const { userToken, isLoading } = useAuth();
+  const { userToken, isLoading, user } = useAuth();
   const [isConnectedToAllowedNetwork, setIsConnectedToAllowedNetwork] = useState<boolean | null>(null);
   const [networkCheckMessage, setNetworkCheckMessage] = useState('');
 
   useEffect(() => {
     checkNetwork();
   }, []);
+
+  // Initialize push notifications for Direction users
+  useEffect(() => {
+    if (userToken && user && (user.role === 'DIRECTION' || user.role === 'ADMIN' || user.role === 'admin')) {
+      console.log('[App] Initializing push notifications for Direction user');
+      pushNotificationService.registerTokenWithBackend(userToken);
+      
+      // Add notification listeners
+      const notificationListener = pushNotificationService.addNotificationReceivedListener(
+        (notification) => {
+          console.log('[App] Notification received:', notification);
+        }
+      );
+      
+      const responseListener = pushNotificationService.addNotificationResponseListener(
+        (response) => {
+          console.log('[App] Notification tapped:', response);
+          // Could navigate to notifications screen here
+        }
+      );
+
+      return () => {
+        notificationListener.remove();
+        responseListener.remove();
+      };
+    }
+  }, [userToken, user]);
 
   const checkNetwork = async () => {
     try {
@@ -198,7 +228,9 @@ function AppContent() {
               <Stack.Screen name="PeseeEntree" component={PeseeEntreeScreen} />
               <Stack.Screen name="AgentControleCreateTour" component={AgentControleCreateTourScreen} />
               <Stack.Screen name="AgentControleRetour" component={AgentControleRetourScreen} />
+              <Stack.Screen name="TourDetail" component={TourDetailScreen} />
               <Stack.Screen name="AgentHygieneDetail" component={AgentHygieneDetailScreen} />
+              <Stack.Screen name="ConflictDetail" component={ConflictDetailScreen} />
             </>
           )}
         </Stack.Navigator>

@@ -1,331 +1,390 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Alert, Linking, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, Linking, Platform, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Text, Card, Title, List, Divider, Button, Avatar, Portal, Modal, Paragraph } from 'react-native-paper';
+import { Text, Portal, Modal, Button, Surface, Divider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+
+const APP_VERSION = '1.0.0';
+const COMPANY_NAME = 'El Firma';
+const SUPPORT_EMAIL = 'support@elfirma.tn';
+const SUPPORT_PHONE = '+216 71 XXX XXX';
 
 export default function ParametresScreen() {
   const navigation = useNavigation<any>();
   const { signOut, user } = useAuth();
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const getRoleLabel = (role: string | null) => {
-    switch(role) {
-      case 'AGENT_CONTROLE': return 'Agent de Contrôle';
-      case 'AGENT_HYGIENE': return 'Agent d\'Hygiène';
-      case 'SECURITE': return 'Sécurité';
-      case 'DIRECTION': return 'Direction';
-      case 'admin': return 'Administrateur';
-      default: return role || 'Utilisateur';
-    }
+  const getRoleConfig = (role: string | null) => {
+    const configs: Record<string, { label: string; icon: string; colors: [string, string]; lightBg: string }> = {
+      'AGENT_CONTROLE': {
+        label: 'Agent de Contrôle',
+        icon: 'clipboard-check',
+        colors: ['#1976D2', '#1565C0'],
+        lightBg: '#E3F2FD'
+      },
+      'AGENT_HYGIENE': {
+        label: 'Agent Hygiène',
+        icon: 'spray-bottle',
+        colors: ['#2E7D32', '#1B5E20'],
+        lightBg: '#E8F5E9'
+      },
+      'SECURITE': {
+        label: 'Agent Sécurité',
+        icon: 'shield-check',
+        colors: ['#E65100', '#BF360C'],
+        lightBg: '#FFF3E0'
+      },
+      'DIRECTION': {
+        label: 'Direction',
+        icon: 'briefcase',
+        colors: ['#7B1FA2', '#6A1B9A'],
+        lightBg: '#F3E5F5'
+      },
+      'admin': {
+        label: 'Administrateur',
+        icon: 'crown',
+        colors: ['#C62828', '#B71C1C'],
+        lightBg: '#FFEBEE'
+      }
+    };
+    return configs[role || ''] || {
+      label: 'Utilisateur',
+      icon: 'account',
+      colors: ['#616161', '#424242'],
+      lightBg: '#F5F5F5'
+    };
   };
 
-  const getRoleColor = (role: string | null) => {
-    switch(role) {
-      case 'AGENT_CONTROLE': return '#2196F3';
-      case 'AGENT_HYGIENE': return '#4CAF50';
-      case 'SECURITE': return '#FF9800';
-      case 'DIRECTION': return '#9C27B0';
-      case 'admin': return '#9C27B0';
-      default: return '#757575';
-    }
-  };
-
-  const getRoleIcon = (role: string | null) => {
-    switch(role) {
-      case 'AGENT_CONTROLE': return 'clipboard-check-outline';
-      case 'AGENT_HYGIENE': return 'spray-bottle';
-      case 'SECURITE': return 'shield-lock-outline';
-      case 'DIRECTION': return 'briefcase-outline';
-      case 'admin': return 'crown-outline';
-      default: return 'account';
-    }
-  };
+  const roleConfig = getRoleConfig(user?.role || null);
 
   const handleLogout = async () => {
-    // Use a cross-platform modal-free immediate logout (Alert button handlers can be flaky on web)
-    try {
-      console.log('[UI] Logout triggered');
-      await signOut();
-      // Force navigation reset (in case stack doesn't re-render immediately)
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    } catch (error) {
-      console.error('Logout error:', error);
-      Alert.alert('Erreur', 'Impossible de se déconnecter');
-    }
-  };
-
-  const handleSupportEmail = async () => {
-    const email = 'support@caisse-management.com';
-    const subject = encodeURIComponent('Support Technique - Caisse Management');
-    const body = encodeURIComponent(
-      `Bonjour,\n\nNom: ${user?.name || 'N/A'}\nEmail: ${user?.email || 'N/A'}\nRôle: ${getRoleLabel(user?.role || null)}\n\nDescription du problème:\n\n`
-    );
-    
-    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
-    
-    try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
-      } else {
-        Alert.alert(
-          'Email non configuré',
-          `Veuillez contacter le support à:\n${email}`,
-          [
-            { 
-              text: 'Copier l\'email', 
-              onPress: () => {
-                // In production, use Clipboard API
-                Alert.alert('Email', email);
-              }
-            },
-            { text: 'OK' }
-          ]
-        );
+    const doLogout = async () => {
+      try {
+        await signOut();
+        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+      } catch (error) {
+        console.error('Logout error:', error);
+        if (Platform.OS === 'web') {
+          window.alert('Erreur lors de la déconnexion');
+        } else {
+          Alert.alert('Erreur', 'Impossible de se déconnecter');
+        }
       }
-    } catch (error) {
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Voulez-vous vous déconnecter?')) {
+        doLogout();
+      }
+    } else {
       Alert.alert(
-        'Support Technique',
-        `Contactez-nous par email:\n${email}\n\nOu appelez le: +216 XX XXX XXX`
+        'Déconnexion',
+        'Voulez-vous vous déconnecter?',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Déconnexion', style: 'destructive', onPress: doLogout }
+        ]
       );
     }
   };
 
-  const handleOpenGuide = () => {
-    setShowGuideModal(true);
-  };
-
-  const getGuideContent = () => {
-    switch(user?.role) {
-      case 'AGENT_CONTROLE':
-        return {
-          title: '📋 Guide Agent de Contrôle',
-          sections: [
-            {
-              title: '1. Créer une nouvelle tournée',
-              content: 'Appuyez sur le bouton "+" en bas à droite. Sélectionnez le chauffeur, le secteur, entrez le matricule et le nombre de caisses. Prenez une photo de preuve avant le départ.'
-            },
-            {
-              title: '2. Gérer les retours',
-              content: 'Dans la liste des tournées, sélectionnez une tournée "En attente déchargement". Comptez les caisses retournées, prenez une photo, et indiquez si des produits poulet sont présents.'
-            },
-            {
-              title: '3. Gestion des conflits',
-              content: 'Un conflit est automatiquement créé si la différence de caisses dépasse la tolérance du chauffeur. La direction sera notifiée.'
-            }
-          ]
-        };
-      case 'AGENT_HYGIENE':
-        return {
-          title: '🧤 Guide Agent d\'Hygiène',
-          sections: [
-            {
-              title: '1. Contrôler une tournée',
-              content: 'Sélectionnez une tournée en attente d\'hygiène. Prenez plusieurs photos du matériel retourné.'
-            },
-            {
-              title: '2. Valider l\'inspection',
-              content: 'Ajoutez des notes si nécessaire. Approuvez si le matériel est propre, ou rejetez s\'il nécessite un nettoyage supplémentaire.'
-            },
-            {
-              title: '3. Finalisation',
-              content: 'Une fois approuvée, la tournée sera marquée comme terminée. En cas de rejet, le chauffeur devra nettoyer à nouveau.'
-            }
-          ]
-        };
-      case 'SECURITE':
-        return {
-          title: '⚖️ Guide Sécurité',
-          sections: [
-            {
-              title: '1. Pesée sortie',
-              content: 'Recherchez le véhicule par matricule. Vérifiez le matricule correspond, puis entrez le poids brut. Le véhicule peut ensuite partir en tournée.'
-            },
-            {
-              title: '2. Pesée entrée',
-              content: 'Recherchez le véhicule de retour par matricule. Vérifiez le matricule, puis entrez le poids brut de retour.'
-            },
-            {
-              title: '3. Format matricule',
-              content: 'Format tunisien: XXX تونس XXXX (ex: 238 تونس 8008). Le système normalise automatiquement les espaces.'
-            }
-          ]
-        };
-      case 'DIRECTION':
-        return {
-          title: '👔 Guide Direction',
-          sections: [
-            {
-              title: '1. Tableau de bord',
-              content: 'Consultez les statistiques globales: total des tournées, en cours, terminées, et nombre de conflits.'
-            },
-            {
-              title: '2. Gestion des conflits',
-              content: 'Dans l\'onglet "Conflits", vous pouvez voir les différences de caisses et leur valeur. Approuvez les conflits après vérification.'
-            },
-            {
-              title: '3. Suivi des tournées',
-              content: 'Dans l\'onglet "Tournées", suivez l\'état de toutes les tournées en temps réel avec leur statut et secteur.'
-            }
-          ]
-        };
-      default:
-        return {
-          title: '📖 Guide d\'utilisation',
-          sections: [
-            {
-              title: 'Navigation',
-              content: 'Utilisez les onglets en bas de l\'écran pour naviguer entre les différentes sections de l\'application.'
-            },
-            {
-              title: 'Support',
-              content: 'Pour toute question, contactez le support technique depuis les paramètres.'
-            }
-          ]
-        };
+  const handleSupportEmail = async () => {
+    const subject = encodeURIComponent(`Support - ${COMPANY_NAME} App`);
+    const body = encodeURIComponent(
+      `Bonjour,\n\nNom: ${user?.name || 'N/A'}\nEmail: ${user?.email || 'N/A'}\nRôle: ${roleConfig.label}\nVersion: ${APP_VERSION}\n\nDescription du problème:\n\n`
+    );
+    
+    const mailtoUrl = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+    
+    try {
+      if (Platform.OS === 'web') {
+        window.open(mailtoUrl, '_blank');
+      } else {
+        const canOpen = await Linking.canOpenURL(mailtoUrl);
+        if (canOpen) {
+          await Linking.openURL(mailtoUrl);
+        } else {
+          Alert.alert('Support', `Email: ${SUPPORT_EMAIL}\nTél: ${SUPPORT_PHONE}`);
+        }
+      }
+    } catch (error) {
+      if (Platform.OS === 'web') {
+        window.alert(`Email: ${SUPPORT_EMAIL}\nTél: ${SUPPORT_PHONE}`);
+      } else {
+        Alert.alert('Support', `Email: ${SUPPORT_EMAIL}\nTél: ${SUPPORT_PHONE}`);
+      }
     }
   };
 
+  const getGuideContent = () => {
+    const guides: Record<string, { title: string; sections: { title: string; content: string; icon: string }[] }> = {
+      'AGENT_CONTROLE': {
+        title: 'Guide Agent de Contrôle',
+        sections: [
+          { icon: 'plus-circle', title: 'Créer une tournée', content: 'Appuyez sur "+" pour créer une nouvelle tournée. Sélectionnez le chauffeur, secteur, matricule et nombre de caisses.' },
+          { icon: 'keyboard-return', title: 'Gérer les retours', content: 'Sélectionnez une tournée en retour, comptez les caisses, prenez une photo et indiquez les produits poulet.' },
+          { icon: 'alert-circle', title: 'Conflits', content: 'Un conflit est créé automatiquement si la différence dépasse la tolérance. La direction sera notifiée.' }
+        ]
+      },
+      'AGENT_HYGIENE': {
+        title: 'Guide Agent Hygiène',
+        sections: [
+          { icon: 'eye', title: 'Inspecter', content: 'Sélectionnez une tournée en attente d\'hygiène pour l\'inspecter.' },
+          { icon: 'camera', title: 'Documenter', content: 'Prenez plusieurs photos du matériel retourné pour documenter l\'état.' },
+          { icon: 'check-circle', title: 'Valider', content: 'Approuvez si propre, ou rejetez pour demander un nettoyage supplémentaire.' }
+        ]
+      },
+      'SECURITE': {
+        title: 'Guide Sécurité',
+        sections: [
+          { icon: 'scale', title: 'Pesée sortie', content: 'Recherchez le véhicule par matricule et entrez le poids brut avant départ.' },
+          { icon: 'scale', title: 'Pesée entrée', content: 'Au retour, pesez à nouveau le véhicule et enregistrez le poids.' },
+          { icon: 'car', title: 'Format matricule', content: 'Format tunisien: XXX تونس XXXX (ex: 238 تونس 8008).' }
+        ]
+      },
+      'DIRECTION': {
+        title: 'Guide Direction',
+        sections: [
+          { icon: 'view-dashboard', title: 'Dashboard', content: 'Consultez les KPIs: tournées actives, caisses dehors, conflits ouverts.' },
+          { icon: 'alert-circle', title: 'Conflits', content: 'Gérez les conflits de caisses. Consultez l\'historique du chauffeur avant de décider.' },
+          { icon: 'truck', title: 'Suivi', content: 'Suivez toutes les tournées en temps réel avec leur statut.' }
+        ]
+      }
+    };
+    return guides[user?.role || ''] || {
+      title: 'Guide d\'utilisation',
+      sections: [
+        { icon: 'navigation', title: 'Navigation', content: 'Utilisez les onglets en bas pour naviguer.' },
+        { icon: 'help-circle', title: 'Aide', content: 'Contactez le support pour toute question.' }
+      ]
+    };
+  };
+
+  const MenuItem = ({ icon, title, subtitle, onPress, showArrow = true, danger = false }: {
+    icon: string;
+    title: string;
+    subtitle?: string;
+    onPress?: () => void;
+    showArrow?: boolean;
+    danger?: boolean;
+  }) => (
+    <TouchableOpacity 
+      style={styles.menuItem} 
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.menuIconContainer, danger && styles.menuIconDanger]}>
+        <MaterialCommunityIcons 
+          name={icon as any} 
+          size={22} 
+          color={danger ? '#F44336' : roleConfig.colors[0]} 
+        />
+      </View>
+      <View style={styles.menuContent}>
+        <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>{title}</Text>
+        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+      </View>
+      {showArrow && onPress && (
+        <MaterialCommunityIcons name="chevron-right" size={22} color="#C0C0C0" />
+      )}
+    </TouchableOpacity>
+  );
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <Text style={styles.sectionHeader}>{title}</Text>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { backgroundColor: getRoleColor(user?.role || null) }]}>
-        <Title style={styles.headerTitle}>⚙️ Paramètres</Title>
-      </View>
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={roleConfig.colors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons name="factory" size={32} color="#fff" />
+          </View>
+          <Text style={styles.companyName}>{COMPANY_NAME}</Text>
+          <Text style={styles.companyTagline}>Gestion des Caisses</Text>
+        </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.content}>
-        <Card style={styles.profileCard}>
-          <Card.Content style={styles.profileContent}>
-            <Avatar.Icon 
-              size={64} 
-              icon={getRoleIcon(user?.role || null)} 
-              style={[styles.avatar, { backgroundColor: getRoleColor(user?.role || null) }]}
-            />
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
+        <Surface style={styles.profileCard} elevation={3}>
+          <View style={styles.profileHeader}>
+            <View style={[styles.avatarContainer, { backgroundColor: roleConfig.lightBg }]}>
+              <MaterialCommunityIcons 
+                name={roleConfig.icon as any} 
+                size={36} 
+                color={roleConfig.colors[0]} 
+              />
+            </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{user?.name || 'Utilisateur'}</Text>
               <Text style={styles.profileEmail}>{user?.email || ''}</Text>
-              <Text style={[styles.profileRole, { color: getRoleColor(user?.role || null) }]}>
-                {getRoleLabel(user?.role || null)}
-              </Text>
+              <View style={[styles.roleBadge, { backgroundColor: roleConfig.lightBg }]}>
+                <MaterialCommunityIcons 
+                  name={roleConfig.icon as any} 
+                  size={14} 
+                  color={roleConfig.colors[0]} 
+                />
+                <Text style={[styles.roleText, { color: roleConfig.colors[0] }]}>
+                  {roleConfig.label}
+                </Text>
+              </View>
             </View>
-          </Card.Content>
-        </Card>
+          </View>
+        </Surface>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.sectionTitle}>Compte</Title>
-          </Card.Content>
-          <List.Item
-            title="Nom d'utilisateur"
-            description={user?.name || 'Non défini'}
-            left={props => <List.Icon {...props} icon="account" />}
+        {/* Account Section */}
+        <SectionHeader title="COMPTE" />
+        <Surface style={styles.menuCard} elevation={1}>
+          <MenuItem 
+            icon="account-circle" 
+            title="Profil" 
+            subtitle={user?.name || 'Non défini'}
+            showArrow={false}
           />
-          <Divider />
-          <List.Item
-            title="Email"
-            description={user?.email || 'Non défini'}
-            left={props => <List.Icon {...props} icon="email" />}
+          <Divider style={styles.divider} />
+          <MenuItem 
+            icon="email" 
+            title="Email" 
+            subtitle={user?.email || 'Non défini'}
+            showArrow={false}
           />
-          <Divider />
-          <List.Item
-            title="Rôle"
-            description={getRoleLabel(user?.role || null)}
-            left={props => <List.Icon {...props} icon={getRoleIcon(user?.role || null)} />}
+          <Divider style={styles.divider} />
+          <MenuItem 
+            icon={roleConfig.icon} 
+            title="Rôle" 
+            subtitle={roleConfig.label}
+            showArrow={false}
           />
-        </Card>
+        </Surface>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.sectionTitle}>Application</Title>
-          </Card.Content>
-          <List.Item
-            title="Version"
-            description="1.0.0"
-            left={props => <List.Icon {...props} icon="information" />}
+        {/* Application Section */}
+        <SectionHeader title="APPLICATION" />
+        <Surface style={styles.menuCard} elevation={1}>
+          <MenuItem 
+            icon="information" 
+            title="Version" 
+            subtitle={APP_VERSION}
+            showArrow={false}
           />
-          <Divider />
-          <List.Item
-            title="À propos"
-            description="Caisse Management System"
-            left={props => <List.Icon {...props} icon="information-outline" />}
+          <Divider style={styles.divider} />
+          <MenuItem 
+            icon="cellphone" 
+            title="Plateforme" 
+            subtitle={Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android'}
+            showArrow={false}
           />
-        </Card>
+        </Surface>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.sectionTitle}>Assistance</Title>
-          </Card.Content>
-          <List.Item
-            title="Support technique"
-            description="Contactez l'équipe support"
-            left={props => <List.Icon {...props} icon="help-circle" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+        {/* Support Section */}
+        <SectionHeader title="AIDE & SUPPORT" />
+        <Surface style={styles.menuCard} elevation={1}>
+          <MenuItem 
+            icon="help-circle" 
+            title="Support technique" 
+            subtitle="Contacter l'équipe"
             onPress={handleSupportEmail}
           />
-          <Divider />
-          <List.Item
-            title="Guide d'utilisation"
-            description="Consulter le manuel"
-            left={props => <List.Icon {...props} icon="book-open-variant" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
-            onPress={handleOpenGuide}
+          <Divider style={styles.divider} />
+          <MenuItem 
+            icon="book-open-variant" 
+            title="Guide d'utilisation" 
+            subtitle="Consulter le manuel"
+            onPress={() => setShowGuideModal(true)}
           />
-        </Card>
+          <Divider style={styles.divider} />
+          <MenuItem 
+            icon="phone" 
+            title="Téléphone" 
+            subtitle={SUPPORT_PHONE}
+            showArrow={false}
+          />
+        </Surface>
 
-        <View style={styles.logoutContainer}>
-          <Button
-            mode="contained"
+        {/* Logout */}
+        <Surface style={[styles.menuCard, styles.logoutCard]} elevation={1}>
+          <MenuItem 
+            icon="logout" 
+            title="Déconnexion" 
             onPress={handleLogout}
-            icon="logout"
-            style={styles.logoutButton}
-            buttonColor="#F44336"
-          >
-            Déconnexion
-          </Button>
-        </View>
+            showArrow={false}
+            danger
+          />
+        </Surface>
 
+        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2025 Caisse Management System</Text>
-          <Text style={styles.footerText}>Solution Professionnelle B2B</Text>
+          <View style={styles.footerLogo}>
+            <MaterialCommunityIcons name="factory" size={24} color="#9E9E9E" />
+            <Text style={styles.footerCompany}>{COMPANY_NAME}</Text>
+          </View>
+          <Text style={styles.footerCopyright}>© 2025 {COMPANY_NAME}</Text>
+          <Text style={styles.footerTagline}>Solution Professionnelle de Gestion</Text>
         </View>
       </ScrollView>
 
+      {/* Guide Modal */}
       <Portal>
         <Modal
           visible={showGuideModal}
           onDismiss={() => setShowGuideModal(false)}
           contentContainerStyle={styles.modalContainer}
         >
-          <Card>
-            <Card.Content>
-              <Title style={styles.modalTitle}>{getGuideContent().title}</Title>
-              
-              <ScrollView style={styles.guideScroll}>
-                {getGuideContent().sections.map((section, index) => (
-                  <View key={index} style={styles.guideSection}>
-                    <Text style={styles.guideSectionTitle}>{section.title}</Text>
-                    <Paragraph style={styles.guideSectionContent}>
-                      {section.content}
-                    </Paragraph>
+          <Surface style={styles.modalContent} elevation={4}>
+            <LinearGradient
+              colors={roleConfig.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.modalHeader}
+            >
+              <MaterialCommunityIcons name="book-open-page-variant" size={28} color="#fff" />
+              <Text style={styles.modalTitle}>{getGuideContent().title}</Text>
+            </LinearGradient>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {getGuideContent().sections.map((section, index) => (
+                <View key={index} style={styles.guideSection}>
+                  <View style={[styles.guideSectionIcon, { backgroundColor: roleConfig.lightBg }]}>
+                    <MaterialCommunityIcons 
+                      name={section.icon as any} 
+                      size={24} 
+                      color={roleConfig.colors[0]} 
+                    />
                   </View>
-                ))}
-
-                <View style={styles.guideFooter}>
-                  <Paragraph style={styles.guideFooterText}>
-                    Pour plus d'informations, contactez le support technique.
-                  </Paragraph>
+                  <View style={styles.guideSectionContent}>
+                    <Text style={styles.guideSectionTitle}>{section.title}</Text>
+                    <Text style={styles.guideSectionText}>{section.content}</Text>
+                  </View>
                 </View>
-              </ScrollView>
+              ))}
 
-              <Button
-                mode="contained"
-                onPress={() => setShowGuideModal(false)}
-                style={styles.closeButton}
-              >
-                Fermer
-              </Button>
-            </Card.Content>
-          </Card>
+              <View style={styles.guideFooter}>
+                <MaterialCommunityIcons name="lightbulb-on" size={20} color="#FFA000" />
+                <Text style={styles.guideFooterText}>
+                  Pour plus d'aide, contactez le support technique.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <Button
+              mode="contained"
+              onPress={() => setShowGuideModal(false)}
+              style={styles.modalButton}
+              buttonColor={roleConfig.colors[0]}
+            >
+              Compris
+            </Button>
+          </Surface>
         </Modal>
       </Portal>
     </View>
@@ -335,35 +394,63 @@ export default function ParametresScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
   },
   header: {
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 30,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    elevation: 4,
   },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 32,
+  headerContent: {
+    alignItems: 'center',
+  },
+  logoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  companyName: {
+    fontSize: 28,
     fontWeight: 'bold',
-    textAlign: 'center',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  companyTagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
   },
   content: {
     flex: 1,
-    padding: 20,
+    marginTop: -20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   profileCard: {
-    marginBottom: 20,
-    elevation: 3,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
   },
-  profileContent: {
+  profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
-  avatar: {
+  avatarContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
   profileInfo: {
@@ -372,87 +459,177 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A1A1A',
   },
   profileEmail: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
+    marginTop: 2,
   },
-  profileRole: {
-    fontSize: 14,
-    fontWeight: '600',
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginTop: 8,
   },
-  card: {
-    marginBottom: 20,
-    elevation: 2,
+  roleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9E9E9E',
+    letterSpacing: 1,
+    marginTop: 20,
+    marginBottom: 8,
+    marginLeft: 4,
   },
-  logoutContainer: {
-    marginVertical: 20,
+  menuCard: {
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
   },
-  logoutButton: {
-    paddingVertical: 6,
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuIconDanger: {
+    backgroundColor: '#FFEBEE',
+  },
+  menuContent: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  menuTitleDanger: {
+    color: '#F44336',
+  },
+  menuSubtitle: {
+    fontSize: 13,
+    color: '#9E9E9E',
+    marginTop: 2,
+  },
+  divider: {
+    marginLeft: 68,
+  },
+  logoutCard: {
+    marginTop: 20,
   },
   footer: {
     alignItems: 'center',
     paddingVertical: 30,
+    paddingBottom: 50,
   },
-  footerText: {
-    color: '#999',
+  footerLogo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  footerCompany: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9E9E9E',
+    marginLeft: 6,
+  },
+  footerCopyright: {
     fontSize: 12,
-    marginTop: 4,
+    color: '#BDBDBD',
+  },
+  footerTagline: {
+    fontSize: 11,
+    color: '#BDBDBD',
+    marginTop: 2,
   },
   modalContainer: {
-    margin: 20,
-    maxHeight: '80%',
+    margin: 16,
+  },
+  modalContent: {
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-    textAlign: 'center',
+    color: '#fff',
+    marginLeft: 10,
   },
-  guideScroll: {
+  modalScroll: {
     maxHeight: 400,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   guideSection: {
+    flexDirection: 'row',
     marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  },
+  guideSectionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  guideSectionContent: {
+    flex: 1,
   },
   guideSectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2196F3',
-    marginBottom: 8,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
-  guideSectionContent: {
+  guideSectionText: {
     fontSize: 14,
-    color: '#555',
-    lineHeight: 22,
+    color: '#666',
+    lineHeight: 20,
   },
   guideFooter: {
-    marginTop: 10,
-    padding: 15,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
   },
   guideFooterText: {
     fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: '#F57C00',
+    marginLeft: 10,
+    flex: 1,
   },
-  closeButton: {
-    marginTop: 15,
-    paddingVertical: 4,
+  modalButton: {
+    margin: 16,
+    marginTop: 8,
+    borderRadius: 12,
   },
 });
