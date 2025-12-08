@@ -74,12 +74,14 @@ const lightTheme = {
 
 function AppContent() {
   const { userToken, isLoading, user } = useAuth();
-  const [isConnectedToAllowedNetwork, setIsConnectedToAllowedNetwork] = useState<boolean | null>(null);
-  const [networkCheckMessage, setNetworkCheckMessage] = useState('');
+  // WiFi security disabled - always allow access
+  const [isConnectedToAllowedNetwork, setIsConnectedToAllowedNetwork] = useState<boolean | null>(true);
+  const [networkCheckMessage, setNetworkCheckMessage] = useState('WiFi security disabled');
 
-  useEffect(() => {
-    checkNetwork();
-  }, []);
+  // WiFi check disabled for now
+  // useEffect(() => {
+  //   checkNetwork();
+  // }, []);
 
   // Initialize push notifications for Direction users
   useEffect(() => {
