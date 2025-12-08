@@ -159,13 +159,10 @@ export default function PhotoUpload({
       <View style={styles.container}>
         <Text style={styles.label}>📸 {label} ({photos.length}) {required && <Text style={styles.required}>*</Text>}</Text>
 
-        {/* Add photo buttons */}
+        {/* Add photo button - camera only */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={[styles.button, { backgroundColor: accentColor }]} onPress={handleTakePhoto}>
-            <Text style={styles.buttonText}>📷 Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleSelectFromLibrary}>
-            <Text style={[styles.buttonText, { color: accentColor }]}>🖼️ Galerie</Text>
+            <Text style={styles.buttonText}>📷 Prendre une photo</Text>
           </TouchableOpacity>
         </View>
 
@@ -231,9 +228,6 @@ export default function PhotoUpload({
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={[styles.button, { backgroundColor: accentColor }]} onPress={handleTakePhoto}>
             <Text style={styles.buttonText}>📷 Prendre une photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={handleSelectFromLibrary}>
-            <Text style={[styles.buttonText, { color: accentColor }]}>🖼️ Galerie</Text>
           </TouchableOpacity>
         </View>
       )}

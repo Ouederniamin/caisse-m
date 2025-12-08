@@ -437,17 +437,9 @@ export default function AgentControleRetourScreen({ route, navigation }: TourRet
                   mode="contained" 
                   icon="camera" 
                   onPress={handleTakePhoto} 
-                  style={[styles.cameraButton, { flex: 1, marginRight: 8 }]}
-                >
-                  Caméra
-                </Button>
-                <Button 
-                  mode="outlined" 
-                  icon="image" 
-                  onPress={handlePickFromGallery} 
                   style={[styles.cameraButton, { flex: 1 }]}
                 >
-                  Galerie
+                  Prendre une photo
                 </Button>
               </View>
             )}
