@@ -1,14 +1,18 @@
 import { Platform } from 'react-native';
 
-// Backend API URL - use localhost on web, local IP on native
+// Backend API URL - use environment variable or fallback to localhost
 const getApiUrl = () => {
+  // Check for production API URL from environment variable
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
-  // On web, use localhost; on native, use the local IP
+  
+  // Development fallbacks
   if (Platform.OS === 'web') {
     return 'http://localhost:3001';
   }
+  
+  // For local development on physical device, use your machine's IP
   return 'http://10.252.169.215:3001';
 };
 
