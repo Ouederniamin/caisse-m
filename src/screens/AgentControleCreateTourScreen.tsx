@@ -4,7 +4,7 @@ import { Text, TextInput, Button, Title, Card, Searchbar, IconButton } from 'rea
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -43,18 +43,7 @@ export default function AgentControleCreateTourScreen() {
 
   useEffect(() => {
     loadData();
-    fetchNextSerieNumber();
   }, []);
-
-  const fetchNextSerieNumber = async () => {
-    try {
-      const response = await api.get('/api/matricules/next-serie');
-      setSerieNumber(response.data.next_serie);
-    } catch (error) {
-      console.error('Error fetching next serie:', error);
-      // Keep default 253 if error
-    }
-  };
 
   const loadData = async () => {
     setLoading(true);
@@ -117,7 +106,7 @@ export default function AgentControleCreateTourScreen() {
             reader.readAsDataURL(blob);
           });
         } else {
-          // On native, use FileSystem
+          // On native, use FileSystem legacy API
           const base64 = await FileSystem.readAsStringAsync(photoUrl, {
             encoding: FileSystem.EncodingType.Base64,
           });
@@ -858,17 +847,21 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    width: SCREEN_WIDTH - 80,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: SCREEN_WIDTH - 60,
+    gap: 12,
   },
   plateInputBox: {
     flex: 1,
     alignItems: 'center',
+    minWidth: 85,
+    maxWidth: 110,
   },
   plateInput: {
     backgroundColor: 'transparent',
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     height: 50,
     width: '100%',
@@ -881,10 +874,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   plateArabicBox: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
+    minWidth: 60,
   },
   plateArabicText: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
