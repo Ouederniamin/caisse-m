@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "caisse-mobile",
+    "name": "El Firma",
     "slug": "el-firma",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -15,7 +16,13 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ngcoding.elfirma",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow El Firma to access your camera to take proof photos.",
+        "NSPhotoLibraryUsageDescription": "Allow El Firma to access your photos to upload images."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,26 +32,45 @@
       "permissions": [
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "package": "com.ngcoding.elfirma"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take proof photos."
+          "cameraPermission": "Allow El Firma to access your camera to take proof photos.",
+          "photosPermission": "Allow El Firma to access your photos to upload images."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "04f26fe6-5867-42c9-9c38-90f72021d53f"
       }
     },
-    "owner": "ngcoding"
+    "owner": "ngcoding",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/04f26fe6-5867-42c9-9c38-90f72021d53f",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
