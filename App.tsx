@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, Button, StatusBar, useColorScheme } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, View, Text, Button, StatusBar, useColorScheme, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider, MD3LightTheme, configureFonts } from 'react-native-paper';
@@ -22,20 +22,6 @@ import DirectionScreen from './src/screens/DirectionScreen';
 import MainTabs from './src/navigation/MainTabs';
 import api from './src/services/api';
 import pushNotificationService from './src/services/pushNotificationService';
-
-// Clear stale cache on app start to prevent SQLITE_FULL errors
-AsyncStorage.getAllKeys().then(keys => {
-  const cacheKeys = keys.filter(k => k.startsWith('@caisse_') && k.endsWith('_cache'));
-  if (cacheKeys.length > 0) {
-    AsyncStorage.multiRemove(cacheKeys).then(() => {
-      console.log('[App] Cleared stale cache:', cacheKeys.length, 'items');
-    }).catch(err => {
-      console.warn('[App] Error clearing cache:', err.message);
-    });
-  }
-}).catch(err => {
-  console.warn('[App] Error getting storage keys:', err.message);
-});
 
 const Stack = createNativeStackNavigator();
 
@@ -220,12 +206,14 @@ function AppContent() {
   if (isLoading || isConnectedToAllowedNetwork === null) {
     return (
       <>
-        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-        <View style={styles.container}>
-          <Text style={styles.loadingText}>🔄 Vérification réseau...</Text>
-          {networkCheckMessage && (
-            <Text style={styles.loadingSubtext}>{networkCheckMessage}</Text>
-          )}
+        <StatusBar barStyle="dark-content" backgroundColor="#2E7D32" />
+        <View style={styles.loadingContainer}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoText}>🏛️</Text>
+          </View>
+          <Text style={styles.loadingTitle}>El Firma</Text>
+          <ActivityIndicator size="large" color="#2E7D32" style={styles.spinner} />
+          <Text style={styles.loadingSubtext}>Chargement...</Text>
         </View>
       </>
     );
@@ -274,6 +262,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logoText: {
+    fontSize: 40,
+  },
+  loadingTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 24,
+  },
+  spinner: {
+    marginBottom: 16,
+  },
   loadingText: {
     fontSize: 18,
     fontWeight: '600',
@@ -314,3 +330,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
+

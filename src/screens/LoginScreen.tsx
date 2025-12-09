@@ -105,31 +105,6 @@ export default function LoginScreen() {
           >
             Se connecter
           </Button>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>Accès Réservé</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <View style={styles.rolesContainer}>
-            <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="shield-check" size={22} color="#2E7D32" />
-              <Text style={styles.roleText}>Contrôle</Text>
-            </View>
-            <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="spray-bottle" size={22} color="#2E7D32" />
-              <Text style={styles.roleText}>Hygiène</Text>
-            </View>
-            <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="security" size={22} color="#2E7D32" />
-              <Text style={styles.roleText}>Sécurité</Text>
-            </View>
-            <View style={styles.roleItem}>
-              <MaterialCommunityIcons name="chart-line" size={22} color="#2E7D32" />
-              <Text style={styles.roleText}>Direction</Text>
-            </View>
-          </View>
         </ScrollView>
       </Surface>
       
@@ -229,43 +204,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 1,
     color: 'white',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 28,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E8E8E8',
-  },
-  dividerText: {
-    marginHorizontal: 14,
-    color: '#AAA',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  rolesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  roleItem: {
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-  },
-  roleText: {
-    fontSize: 11,
-    color: '#555',
-    fontWeight: '600',
   },
   footer: {
     paddingBottom: 20,
