@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, ImageBackground, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { TextInput, Button, Text, Title, Surface, useTheme } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -59,7 +59,7 @@ export default function LoginScreen() {
       </View>
 
       <Surface style={styles.formSurface} elevation={4}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.formContent}>
           <Text style={[styles.welcomeText, { color: theme.colors.primary }]}>Bienvenue</Text>
           <Text style={styles.instructionText}>Connectez-vous à votre espace</Text>
 
@@ -105,7 +105,7 @@ export default function LoginScreen() {
           >
             Se connecter
           </Button>
-        </ScrollView>
+        </View>
       </Surface>
       
       <View style={styles.footer}>
@@ -157,7 +157,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   formSurface: {
-    flex: 1,
     marginHorizontal: 24,
     marginTop: -30,
     marginBottom: 16,
@@ -170,7 +169,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
   },
-  scrollContent: {
+  formContent: {
     padding: 28,
   },
   welcomeText: {
