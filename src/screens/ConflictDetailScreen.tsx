@@ -153,7 +153,7 @@ export default function ConflictDetailScreen() {
         { 
           text: 'Rejeter', 
           style: 'destructive',
-          onPress: (notes) => {
+          onPress: (notes: string | undefined) => {
             if (notes && notes.trim()) {
               doReject(notes);
             } else {
@@ -189,8 +189,9 @@ export default function ConflictDetailScreen() {
   const getStatusColor = (statut: string) => {
     switch (statut) {
       case 'EN_ATTENTE': return '#FF9800';
-      case 'APPROUVE': return '#4CAF50';
-      case 'REJETE': return '#F44336';
+      case 'PAYEE': return '#4CAF50';      // Legacy - paid
+      case 'ANNULE': return '#9E9E9E';     // Legacy - cancelled
+      case 'RESOLUE': return '#4CAF50';    // New - fully resolved
       default: return '#9E9E9E';
     }
   };
@@ -198,8 +199,9 @@ export default function ConflictDetailScreen() {
   const getStatusLabel = (statut: string) => {
     switch (statut) {
       case 'EN_ATTENTE': return 'En attente';
-      case 'APPROUVE': return 'Approuvé';
-      case 'REJETE': return 'Rejeté';
+      case 'PAYEE': return 'Payé';          // Legacy
+      case 'ANNULE': return 'Annulé';       // Legacy
+      case 'RESOLUE': return 'Résolu';      // New
       default: return statut;
     }
   };

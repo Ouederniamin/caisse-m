@@ -248,25 +248,25 @@ export default function DirectionScreen() {
           <View style={styles.kpiGrid}>
             <Surface style={[styles.kpiCard, { backgroundColor: '#E3F2FD' }]} elevation={2}>
               <Text style={styles.kpiIcon}>🚚</Text>
-              <Text style={[styles.kpiValue, { color: '#1976D2' }]}>{kpis.toursEnCours}</Text>
+              <Text style={[styles.kpiValue, { color: '#1976D2' }]}>{kpis.tours_actives}</Text>
               <Text style={styles.kpiLabel}>Tours En Cours</Text>
             </Surface>
             
             <Surface style={[styles.kpiCard, { backgroundColor: '#FFF3E0' }]} elevation={2}>
               <Text style={styles.kpiIcon}>📦</Text>
-              <Text style={[styles.kpiValue, { color: '#E65100' }]}>{kpis.caissesDepart - kpis.caissesRetour}</Text>
+              <Text style={[styles.kpiValue, { color: '#E65100' }]}>{kpis.caisses_dehors}</Text>
               <Text style={styles.kpiLabel}>Caisses Dehors</Text>
             </Surface>
             
             <Surface style={[styles.kpiCard, { backgroundColor: '#FFEBEE' }]} elevation={2}>
               <Text style={styles.kpiIcon}>⚠️</Text>
-              <Text style={[styles.kpiValue, { color: '#C62828' }]}>{kpis.conflitsEnAttente}</Text>
+              <Text style={[styles.kpiValue, { color: '#C62828' }]}>{kpis.conflits_ouverts}</Text>
               <Text style={styles.kpiLabel}>Conflits Ouverts</Text>
             </Surface>
             
             <Surface style={[styles.kpiCard, { backgroundColor: '#E8F5E9' }]} elevation={2}>
               <Text style={styles.kpiIcon}>✅</Text>
-              <Text style={[styles.kpiValue, { color: '#2E7D32' }]}>{kpis.toursTermines}</Text>
+              <Text style={[styles.kpiValue, { color: '#2E7D32' }]}>{kpis.tours_terminees_aujourdhui}</Text>
               <Text style={styles.kpiLabel}>Tours Terminées</Text>
             </Surface>
           </View>
@@ -277,18 +277,18 @@ export default function DirectionScreen() {
               <Title style={styles.cardTitle}>📊 Aujourd'hui</Title>
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{kpis.toursAujourdHui}</Text>
-                  <Text style={styles.statLabel}>Total Tours</Text>
+                  <Text style={styles.statValue}>{kpis.tours_terminees_aujourdhui}</Text>
+                  <Text style={styles.statLabel}>Terminées</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{kpis.toursEnAttente}</Text>
-                  <Text style={styles.statLabel}>En Attente</Text>
+                  <Text style={styles.statValue}>{kpis.tours_en_attente_retour}</Text>
+                  <Text style={styles.statLabel}>Att. Retour</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{kpis.totalChauffeurs}</Text>
-                  <Text style={styles.statLabel}>Chauffeurs</Text>
+                  <Text style={styles.statValue}>{kpis.tours_en_attente_hygiene}</Text>
+                  <Text style={styles.statLabel}>Att. Hygiène</Text>
                 </View>
               </View>
             </Card.Content>
@@ -306,7 +306,7 @@ export default function DirectionScreen() {
                   style={styles.quickActionButton}
                   labelStyle={styles.quickActionLabel}
                 >
-                  Voir Conflits ({kpis.conflitsEnAttente})
+                  Voir Conflits ({kpis.conflits_ouverts})
                 </Button>
                 <Button
                   mode="outlined"
@@ -315,7 +315,7 @@ export default function DirectionScreen() {
                   style={styles.quickActionButton}
                   labelStyle={styles.quickActionLabel}
                 >
-                  Voir Tournées ({kpis.toursEnCours})
+                  Voir Tournées ({kpis.tours_actives})
                 </Button>
               </View>
             </Card.Content>

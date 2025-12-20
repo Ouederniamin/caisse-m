@@ -140,6 +140,45 @@ export default function DirectionDashboardScreen() {
               </Surface>
             </View>
 
+            {/* Stock Card */}
+            {kpis.stock_configure && (
+              <Card style={[styles.stockCard, kpis.stock_alerte && styles.stockCardAlert]}>
+                <Card.Content style={styles.stockContent}>
+                  <View style={styles.stockHeader}>
+                    <Text style={styles.stockIcon}>📦</Text>
+                    <View style={styles.stockTitleContainer}>
+                      <Title style={styles.stockTitle}>Stock Caisses</Title>
+                      {kpis.stock_alerte && (
+                        <Badge style={styles.stockAlertBadge}>⚠️ Stock Bas</Badge>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.stockRow}>
+                    <View style={styles.stockItem}>
+                      <Text style={[styles.stockValue, kpis.stock_alerte && styles.stockValueAlert]}>
+                        {kpis.stock_actuel}
+                      </Text>
+                      <Text style={styles.stockLabel}>Actuel</Text>
+                    </View>
+                    <View style={styles.stockDivider} />
+                    <View style={styles.stockItem}>
+                      <Text style={styles.stockValue}>{kpis.stock_initial}</Text>
+                      <Text style={styles.stockLabel}>Initial</Text>
+                    </View>
+                    <View style={styles.stockDivider} />
+                    <View style={styles.stockItem}>
+                      <Text style={styles.stockValue}>
+                        {kpis.stock_initial > 0 
+                          ? Math.round((kpis.stock_actuel / kpis.stock_initial) * 100) 
+                          : 0}%
+                      </Text>
+                      <Text style={styles.stockLabel}>Restant</Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            )}
+
             {/* Navigation Cards - removed since we have tabs now */}
             
             {/* Secondary Stats */}
@@ -352,5 +391,70 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     fontSize: 16,
+  },
+  // Stock styles
+  stockCard: {
+    marginBottom: 15,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+  },
+  stockCardAlert: {
+    backgroundColor: '#FFF3E0',
+    borderColor: '#FF9800',
+    borderWidth: 2,
+  },
+  stockContent: {
+    paddingVertical: 12,
+  },
+  stockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  stockIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  stockTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stockTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  stockAlertBadge: {
+    backgroundColor: '#FF9800',
+    fontSize: 11,
+  },
+  stockRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  stockItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stockValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  stockValueAlert: {
+    color: '#E65100',
+  },
+  stockLabel: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  stockDivider: {
+    width: 1,
+    height: 35,
+    backgroundColor: '#E0E0E0',
   },
 });

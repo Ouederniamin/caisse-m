@@ -2,17 +2,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Network from 'expo-network';
 import api from './api';
 
-// Types - matching backend response
+// Types - matching backend response from /api/dashboard/kpis
 interface KPIData {
-  toursAujourdHui: number;
-  toursEnCours: number;
-  toursTermines: number;
-  toursEnAttente: number;
-  totalChauffeurs: number;
-  caissesDepart: number;
-  caissesRetour: number;
-  conflitsTotal: number;
-  conflitsEnAttente: number;
+  tours_actives: number;
+  caisses_dehors: number;
+  conflits_ouverts: number;
+  conflits_hors_tolerance: number;
+  kilos_livres: number;
+  tours_en_attente_retour: number;
+  tours_en_attente_hygiene: number;
+  tours_terminees_aujourdhui: number;
+  tours_par_statut: Record<string, number>;
+  // Stock data
+  stock_actuel: number;
+  stock_initial: number;
+  stock_alerte: boolean;
+  stock_configure: boolean;
   timestamp: string;
 }
 
@@ -140,13 +145,14 @@ class OfflineService {
 
   // Set cached data with expiry
   private async setCache<T>(key: string, data: T, duration: number): Promise<void> {
+    const now = new Date();
+    const cached: CachedData<T> = {
+      data,
+      cachedAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + duration).toISOString(),
+    };
+    
     try {
-      const now = new Date();
-      const cached: CachedData<T> = {
-        data,
-        cachedAt: now.toISOString(),
-        expiresAt: new Date(now.getTime() + duration).toISOString(),
-      };
       await AsyncStorage.setItem(key, JSON.stringify(cached));
     } catch (error: any) {
       console.error(`[OfflineService] Error writing cache ${key}:`, error);
