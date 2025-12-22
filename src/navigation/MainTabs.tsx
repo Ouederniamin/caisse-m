@@ -9,6 +9,7 @@ import SecuriteScreen from '../screens/SecuriteScreen';
 import DirectionDashboardScreen from '../screens/direction/DirectionDashboardScreen';
 import DirectionConflictsScreen from '../screens/direction/DirectionConflictsScreen';
 import DirectionToursScreen from '../screens/direction/DirectionToursScreen';
+import DirectionStockScreen from '../screens/direction/DirectionStockScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ParametresScreen from '../screens/ParametresScreen';
 import { useAuth } from '../context/AuthContext';
@@ -34,12 +35,16 @@ function DashboardStackNavigator() {
   );
 }
 
-type ControleTabBarProps = BottomTabBarProps & {
-  showCreateShortcut?: boolean;
+type CenterActionTabBarProps = BottomTabBarProps & {
+  showCenterAction?: boolean;
+  centerActionRoute?: string; // Which tab to show the button after
+  centerActionTarget?: string; // Which screen to navigate to
+  centerActionLabel?: string;
+  isRtl?: boolean; // RTL layout for Arabic
 };
 
-function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
-  if (!showCreateShortcut) {
+function CenterActionTabBar({ showCenterAction, centerActionRoute = 'Sécurité', centerActionTarget = 'PeseeVide', centerActionLabel = 'Créer', isRtl = false, ...props }: CenterActionTabBarProps) {
+  if (!showCenterAction) {
     return (
       <View style={tabStyles.wrapper}>
         <BottomTabBar {...props} />
@@ -49,12 +54,12 @@ function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
 
   const { state, descriptors, navigation } = props;
 
-  const handleCreatePress = () => {
+  const handleCenterPress = () => {
     const parentNavigator = navigation.getParent();
     if (parentNavigator) {
-      parentNavigator.navigate('AgentControleCreateTour' as never);
+      parentNavigator.navigate(centerActionTarget as never);
     } else {
-      navigation.navigate('AgentControleCreateTour' as never);
+      navigation.navigate(centerActionTarget as never);
     }
   };
 
@@ -89,7 +94,7 @@ function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
 
     const color = isFocused ? '#2563eb' : '#94a3b8';
     const icon = options.tabBarIcon
-      ? options.tabBarIcon({ color, size: 20 })
+      ? options.tabBarIcon({ focused: isFocused, color, size: 20 })
       : null;
 
     return (
@@ -97,7 +102,7 @@ function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
         accessibilityRole="button"
         accessibilityState={isFocused ? { selected: true } : {}}
         accessibilityLabel={options.tabBarAccessibilityLabel}
-        testID={options.tabBarTestID}
+        testID={(options as any).tabBarTestID}
         onPress={onPress}
         onLongPress={onLongPress}
         style={tabStyles.inlineTab}
@@ -113,18 +118,18 @@ function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
   const elements: React.ReactNode[] = [];
   state.routes.forEach((route, index) => {
     elements.push(renderTab(route, index));
-    if (route.name === 'Contrôle') {
+    if (route.name === centerActionRoute) {
       elements.push(
         <TouchableOpacity
           key="center-action"
           style={tabStyles.inlineCenterAction}
           activeOpacity={0.9}
-          onPress={handleCreatePress}
+          onPress={handleCenterPress}
         >
           <View style={tabStyles.inlineCenterCircle}>
             <MaterialCommunityIcons name="plus" size={22} color="#fff" />
           </View>
-          <Text style={tabStyles.inlineCenterLabel}>Créer</Text>
+          <Text style={tabStyles.inlineCenterLabel}>{centerActionLabel}</Text>
         </TouchableOpacity>
       );
     }
@@ -132,16 +137,25 @@ function ControleTabBar({ showCreateShortcut, ...props }: ControleTabBarProps) {
 
   return (
     <View style={tabStyles.inlineWrapper}>
-      <View style={tabStyles.inlineBar}>{elements}</View>
+      <View style={[tabStyles.inlineBar, isRtl && tabStyles.inlineBarRtl]}>{elements}</View>
     </View>
   );
 }
+
+// Arabic labels for SECURITE role
+const AR_LABELS = {
+  security: 'الأمن',
+  settings: 'الإعدادات',
+  create: 'إنشاء',
+};
 
 export default function MainTabs() {
   const { user } = useAuth();
 
   const role = user?.role;
-  const showControleCenterAction = role === 'AGENT_CONTROLE';
+  const isSecurite = role === 'SECURITE';
+  // Sécurité creates tours - show center action button for SECURITE role only
+  const showSecuriteCenterAction = isSecurite;
 
   // Direction/Admin role tabs
   if (role === 'DIRECTION' || role === 'admin') {
@@ -202,6 +216,23 @@ export default function MainTabs() {
           }}
         />
         <Tab.Screen
+          name="Stock"
+          component={DirectionStockScreen}
+          options={{
+            tabBarLabel: 'Stock',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? {
+                backgroundColor: '#FFF3E0',
+                borderRadius: 14,
+                padding: 10,
+              } : { padding: 10 }}>
+                <MaterialCommunityIcons name="package-variant" color={focused ? '#E65100' : color} size={22} />
+              </View>
+            ),
+            tabBarActiveTintColor: '#E65100',
+          }}
+        />
+        <Tab.Screen
           name="Conflits"
           component={DirectionConflictsScreen}
           options={{
@@ -259,7 +290,14 @@ export default function MainTabs() {
   return (
     <Tab.Navigator
       tabBar={(props) => (
-        <ControleTabBar {...props} showCreateShortcut={showControleCenterAction} />
+        <CenterActionTabBar 
+          {...props} 
+          showCenterAction={showSecuriteCenterAction}
+          centerActionRoute={isSecurite ? AR_LABELS.security : 'Sécurité'}
+          centerActionTarget="PeseeVide"
+          centerActionLabel={isSecurite ? AR_LABELS.create : 'Créer'}
+          isRtl={isSecurite}
+        />
       )}
       screenOptions={{
         headerShown: false,
@@ -325,9 +363,10 @@ export default function MainTabs() {
 
       {(role === 'SECURITE' || role === 'admin') && (
         <Tab.Screen
-          name="Sécurité"
+          name={isSecurite ? AR_LABELS.security : 'Sécurité'}
           component={SecuriteScreen}
           options={{
+            tabBarLabel: isSecurite ? AR_LABELS.security : 'Sécurité',
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons name="shield-lock-outline" color={color} size={size} />
             ),
@@ -338,7 +377,7 @@ export default function MainTabs() {
       {(role === 'DIRECTION' || role === 'admin') && (
         <Tab.Screen
           name="Direction"
-          component={DirectionStackNavigator}
+          component={DashboardStackNavigator}
           options={{
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons name="view-dashboard-outline" color={color} size={size} />
@@ -348,9 +387,10 @@ export default function MainTabs() {
       )}
 
       <Tab.Screen
-        name="Paramètres"
+        name={isSecurite ? AR_LABELS.settings : 'Paramètres'}
         component={ParametresScreen}
         options={{
+          tabBarLabel: isSecurite ? AR_LABELS.settings : 'Paramètres',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="cog-outline" color={color} size={size} />
           ),
@@ -382,6 +422,9 @@ const tabStyles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 6,
+  },
+  inlineBarRtl: {
+    flexDirection: 'row-reverse',
   },
   inlineTab: {
     flex: 1,

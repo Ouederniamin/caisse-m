@@ -38,7 +38,6 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [decision, setDecision] = useState<'APPROUVE' | 'REJETE' | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   React.useEffect(() => {
@@ -110,33 +109,25 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
     }
   };
 
-  const handleDecision = (status: 'APPROUVE' | 'REJETE') => {
+  const handleValidate = () => {
     if (photoUrls.length === 0) {
       showAlert('Photos Requises', 'Veuillez prendre au moins une photo avant de valider');
       return;
     }
-
-    setDecision(status);
     setShowConfirmModal(true);
   };
 
   const handleSubmit = async () => {
-    if (!decision) return;
-
     setSubmitting(true);
     try {
       await api.patch(`/api/tours/${tourId}/hygiene`, {
         agentHygieneId: user?.id,
         photos_hygiene_urls: photoUrls,
         notes_hygiene: notes,
-        statut_hygiene: decision,
+        statut_hygiene: 'APPROUVE',
       });
 
-      const message = decision === 'APPROUVE'
-        ? 'La tournée est maintenant terminée.'
-        : 'La tournée est marquée comme terminée avec un rejet.';
-
-      showAlert('Hygiène Validée', message, () => navigation.goBack());
+      showAlert('Contrôle Terminé', 'Le contrôle d\'hygiène est validé. La tournée est maintenant terminée.', () => navigation.goBack());
     } catch (error: any) {
       showAlert('Erreur', error.response?.data?.error || 'Impossible d\'enregistrer la validation');
     } finally {
@@ -301,35 +292,25 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
           />
         </View>
 
-        {/* Decision Buttons */}
+        {/* Validate Button */}
         <View style={styles.decisionSection}>
-          <Text style={styles.sectionTitle}>✅ Décision</Text>
+          <Text style={styles.sectionTitle}>✅ Validation</Text>
           {photoUrls.length === 0 && (
             <Text style={styles.warningText}>⚠️ Au moins une photo requise</Text>
           )}
-          <View style={styles.decisionButtons}>
-            <TouchableOpacity
-              style={[styles.decisionBtn, styles.rejectBtn, photoUrls.length === 0 && styles.disabledBtn]}
-              onPress={() => handleDecision('REJETE')}
-              disabled={photoUrls.length === 0}
-            >
-              <Text style={styles.decisionBtnText}>❌ Rejeter</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.decisionBtn, styles.approveBtn, photoUrls.length === 0 && styles.disabledBtn]}
-              onPress={() => handleDecision('APPROUVE')}
-              disabled={photoUrls.length === 0}
-            >
-              <Text style={styles.decisionBtnText}>✅ Approuver</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.validateBtn, photoUrls.length === 0 && styles.disabledBtn]}
+            onPress={handleValidate}
+            disabled={photoUrls.length === 0}
+          >
+            <Text style={styles.validateBtnText}>✅ Valider le Contrôle</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Info Card */}
         <View style={styles.infoBox}>
           <Text style={styles.infoBoxText}>
-            ℹ️ Approuver = matériel propre, tournée terminée{'\n'}
-            Rejeter = nettoyage supplémentaire requis
+            ℹ️ Prenez des photos du matériel nettoyé avant de valider
           </Text>
         </View>
       </ScrollView>
@@ -342,19 +323,17 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
           contentContainerStyle={styles.modalContainer}
         >
           <View style={styles.modalContent}>
-            <Text style={[styles.modalTitle, decision === 'APPROUVE' ? styles.approveColor : styles.rejectColor]}>
-              {decision === 'APPROUVE' ? '✅ Approuver' : '❌ Rejeter'}
+            <Text style={[styles.modalTitle, styles.approveColor]}>
+              ✅ Valider le Contrôle
             </Text>
             
             <View style={styles.modalSummary}>
-              <Text style={styles.modalSummaryText}>Photos: {photoUrls.length}</Text>
-              <Text style={styles.modalSummaryText}>Notes: {notes ? 'Oui' : 'Non'}</Text>
+              <Text style={styles.modalSummaryText}>📸 Photos: {photoUrls.length}</Text>
+              <Text style={styles.modalSummaryText}>📝 Notes: {notes ? 'Oui' : 'Non'}</Text>
             </View>
 
             <Text style={styles.modalMessage}>
-              {decision === 'APPROUVE'
-                ? 'La tournée sera marquée comme terminée.'
-                : 'Le matériel devra être nettoyé à nouveau.'}
+              Le contrôle d'hygiène sera validé et la tournée sera marquée comme terminée.
             </Text>
 
             <View style={styles.modalActions}>
@@ -366,7 +345,7 @@ export default function AgentHygieneDetailScreen({ route, navigation }: AgentHyg
                 <Text style={styles.modalCancelText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalBtn, decision === 'APPROUVE' ? styles.approveBtn : styles.rejectBtn]}
+                style={[styles.modalBtn, styles.approveBtn]}
                 onPress={handleSubmit}
                 disabled={submitting}
               >
@@ -535,6 +514,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 10,
     textAlign: 'center',
+  },
+  validateBtn: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  validateBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   decisionButtons: {
     flexDirection: 'row',

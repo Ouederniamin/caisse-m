@@ -2,22 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Image, Platform, Modal, TouchableOpacity, Dimensions } from 'react-native';
 import { Text, Card, Title, Button, Chip, Divider, ActivityIndicator, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import api from '../services/api';
 import MatriculeText from '../components/MatriculeText';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-interface TourDetailScreenProps {
-  route: {
-    params: {
-      tourId: string;
-    };
-  };
-}
+type RootStackParamList = {
+  TourDetail: { tourId: string };
+};
 
-export default function TourDetailScreen({ route }: TourDetailScreenProps) {
+export default function TourDetailScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RootStackParamList, 'TourDetail'>>();
   const { tourId } = route.params;
   const [tour, setTour] = useState<any>(null);
   const [loading, setLoading] = useState(true);

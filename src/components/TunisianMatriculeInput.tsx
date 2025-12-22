@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
+import { View, StyleSheet, TextInput as RNTextInput, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
+
+// Arabic translations
+const AR = {
+  vehicleMatricule: 'ترقيم المركبة',
+  hint: 'أدخل رقم السلسلة (3 أرقام) والرقم الفريد (4 أرقام)',
+};
 
 interface TunisianMatriculeInputProps {
   value?: string; // Full matricule like "960 تونس 9438"
@@ -8,6 +14,7 @@ interface TunisianMatriculeInputProps {
   serieNumber?: string; // Left 3 digits (auto-filled from backend)
   disabled?: boolean;
   error?: boolean;
+  rtl?: boolean; // RTL mode for Arabic (SECURITE role)
 }
 
 export default function TunisianMatriculeInput({
@@ -16,6 +23,7 @@ export default function TunisianMatriculeInput({
   serieNumber: propSerieNumber,
   disabled = false,
   error = false,
+  rtl = false,
 }: TunisianMatriculeInputProps) {
   const [serieNumber, setSerieNumber] = useState(propSerieNumber || '253');
   const [uniqueNumber, setUniqueNumber] = useState('');
@@ -59,7 +67,9 @@ export default function TunisianMatriculeInput({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Matricule Véhicule</Text>
+      <Text style={[styles.label, rtl && styles.labelRtl]}>
+        {rtl ? AR.vehicleMatricule : 'Matricule Véhicule'}
+      </Text>
       
       {/* Matricule Plate Preview (Like Real Tunisian Plate) */}
       <View style={styles.plateContainer}>
@@ -92,8 +102,8 @@ export default function TunisianMatriculeInput({
         </View>
       </View>
 
-      <Text style={styles.hint}>
-        Saisissez le numéro de série (3 chiffres) et numéro unique (4 chiffres)
+      <Text style={[styles.hint, rtl && styles.hintRtl]}>
+        {rtl ? AR.hint : 'Saisissez le numéro de série (3 chiffres) et numéro unique (4 chiffres)'}
       </Text>
     </View>
   );
@@ -102,38 +112,47 @@ export default function TunisianMatriculeInput({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 15,
+    alignItems: 'center',
   },
   label: {
     fontSize: 16,
     marginBottom: 12,
     color: '#333',
     fontWeight: '600',
+    alignSelf: 'flex-start',
+  },
+  labelRtl: {
+    alignSelf: 'flex-end',
+    textAlign: 'right',
+    fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif',
   },
   plateContainer: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 4,
-    elevation: 3,
+    borderRadius: 10,
+    padding: 5,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    width: '100%',
+    maxWidth: 340,
   },
   plateInner: {
-    backgroundColor: '#000',
-    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: '#333',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minHeight: 55,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 65,
   },
   leftInput: {
-    flex: 1,
-    fontSize: 32,
+    width: 80,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -142,18 +161,22 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   arabicSection: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 4,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#444',
+    marginHorizontal: 8,
   },
   arabicText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
     letterSpacing: 2,
   },
   rightInput: {
-    flex: 1.2,
-    fontSize: 32,
+    width: 100,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -163,9 +186,13 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: '#999',
-    marginTop: 8,
+    color: '#888',
+    marginTop: 10,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  hintRtl: {
+    fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif',
+    fontStyle: 'normal',
   },
 });

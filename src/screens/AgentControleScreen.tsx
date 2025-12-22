@@ -24,13 +24,14 @@ export default function AgentControleScreen() {
   const [serieNumber, setSerieNumber] = useState('');
   const [uniqueNumber, setUniqueNumber] = useState('');
 
-  // Status filter options
+  // Status filter options - Updated for new flow
   const statusFilters = [
     { key: 'all', label: 'Toutes', icon: '📋', color: '#1D4ED8' },
-    { key: 'PREPARATION', label: 'Préparation', icon: '⏳', color: '#6B7280' },
+    { key: 'PESEE_VIDE', label: 'Chargement', icon: '📦', color: '#6B7280' },
     { key: 'PRET_A_PARTIR', label: 'Prêt', icon: '🚀', color: '#2563EB' },
     { key: 'EN_TOURNEE', label: 'En tournée', icon: '🚚', color: '#F59E0B' },
-    { key: 'EN_ATTENTE_DECHARGEMENT', label: 'Retour', icon: '📦', color: '#8B5CF6' },
+    { key: 'RETOUR', label: 'Retour', icon: '🔙', color: '#8B5CF6' },
+    { key: 'EN_ATTENTE_DECHARGEMENT', label: 'Déchargé', icon: '✅', color: '#10B981' },
     { key: 'EN_ATTENTE_HYGIENE', label: 'Hygiène', icon: '🧹', color: '#EF4444' },
     { key: 'TERMINEE', label: 'Terminée', icon: '✅', color: '#10B981' },
   ];
@@ -65,10 +66,12 @@ export default function AgentControleScreen() {
 
   const getTourStatusLabel = (status: string) => {
     const labels: { [key: string]: string } = {
-      'PREPARATION': 'Préparation',
+      'PESEE_VIDE': 'Attente chargement',
+      'EN_CHARGEMENT': 'En chargement',
       'PRET_A_PARTIR': 'Prêt à partir',
       'EN_TOURNEE': 'En tournée',
-      'EN_ATTENTE_DECHARGEMENT': 'Attente déchargement',
+      'RETOUR': 'Retour usine',
+      'EN_ATTENTE_DECHARGEMENT': 'Déchargé',
       'EN_ATTENTE_HYGIENE': 'Attente hygiène',
       'TERMINEE': 'Terminé',
     };
@@ -77,54 +80,16 @@ export default function AgentControleScreen() {
 
   const getTourStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
-      'PREPARATION': '#9E9E9E',
+      'PESEE_VIDE': '#9E9E9E',
+      'EN_CHARGEMENT': '#FF9800',
       'PRET_A_PARTIR': '#2196F3',
       'EN_TOURNEE': '#FF9800',
-      'EN_ATTENTE_DECHARGEMENT': '#9C27B0',
+      'RETOUR': '#9C27B0',
+      'EN_ATTENTE_DECHARGEMENT': '#4CAF50',
       'EN_ATTENTE_HYGIENE': '#FFC107',
       'TERMINEE': '#4CAF50',
     };
     return colors[status] || '#757575';
-  };
-
-  const handleMarkReady = async (tourId: string) => {
-    if (Platform.OS === 'web') {
-      // Web doesn't support Alert.alert with buttons, use confirm instead
-      const confirmed = window.confirm(
-        'Marquer cette tournée comme "Prêt à partir" ?\n\nLe chauffeur pourra ensuite passer à la pesée sécurité.'
-      );
-      if (confirmed) {
-        try {
-          await api.patch(`/api/tours/${tourId}/pret`);
-          window.alert('✅ Tournée marquée comme prête à partir');
-          loadTours();
-        } catch (error: any) {
-          console.error('Error marking tour ready:', error);
-          window.alert('Erreur: ' + (error.response?.data?.error || 'Impossible de mettre à jour le statut'));
-        }
-      }
-    } else {
-      Alert.alert(
-        'Confirmer',
-        'Marquer cette tournée comme "Prêt à partir" ?\n\nLe chauffeur pourra ensuite passer à la pesée sécurité.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Confirmer',
-            onPress: async () => {
-              try {
-                await api.patch(`/api/tours/${tourId}/pret`);
-                Alert.alert('✅ Succès', 'Tournée marquée comme prête à partir');
-                loadTours();
-              } catch (error: any) {
-                console.error('Error marking tour ready:', error);
-                Alert.alert('Erreur', error.response?.data?.error || 'Impossible de mettre à jour le statut');
-              }
-            }
-          }
-        ]
-      );
-    }
   };
 
   const handleMatriculeSearch = (serie: string, unique: string) => {
@@ -366,8 +331,13 @@ export default function AgentControleScreen() {
               </View>
 
               <View style={styles.tourDetailsRow}>
-                <Text style={styles.detailText}>📍 {tour.secteur.nom}</Text>
-                <Text style={styles.detailText}>📦 {tour.nbre_caisses_depart} caisses</Text>
+                <Text style={styles.detailText}>📍 {tour.secteur?.nom || 'À définir'}</Text>
+                {tour.nbre_caisses_depart > 0 && (
+                  <Text style={styles.detailText}>📦 {tour.nbre_caisses_depart} caisses</Text>
+                )}
+                {tour.poids_a_vide > 0 && (
+                  <Text style={styles.detailText}>⚖️ Vide: {tour.poids_a_vide} kg</Text>
+                )}
                 {tour.driver?.marque_vehicule && (
                   <Text style={styles.detailText}>🚛 {tour.driver.marque_vehicule}</Text>
                 )}
@@ -381,22 +351,22 @@ export default function AgentControleScreen() {
             </Card.Content>
 
             <Card.Actions style={styles.actions}>
-              {/* PREPARATION - Mark as ready to depart */}
-              {tour.statut === 'PREPARATION' && (
+              {/* PESEE_VIDE - Ready for loading (chargement) */}
+              {tour.statut === 'PESEE_VIDE' && (
                 <Button
                   mode="contained"
-                  icon="rocket-launch"
-                  style={[styles.actionButton, { backgroundColor: '#10B981' }]}
-                  onPress={() => handleMarkReady(tour.id)}
+                  icon="package-up"
+                  style={[styles.actionButton, { backgroundColor: '#1D4ED8' }]}
+                  onPress={() => navigateToScreen('ChargementDetail', { tourId: tour.id })}
                 >
-                  Prêt à partir
+                  Chargement
                 </Button>
               )}
 
               {/* PRET_A_PARTIR - Waiting for security checkpoint */}
               {tour.statut === 'PRET_A_PARTIR' && (
                 <View style={styles.waitingBadge}>
-                  <Text style={styles.waitingText}>⏳ En attente pesée sécurité</Text>
+                  <Text style={styles.waitingText}>⏳ En attente pesée sortie</Text>
                 </View>
               )}
 
@@ -407,16 +377,23 @@ export default function AgentControleScreen() {
                 </View>
               )}
               
-              {/* EN_ATTENTE_DECHARGEMENT - Handle return */}
-              {tour.statut === 'EN_ATTENTE_DECHARGEMENT' && (
+              {/* RETOUR - Handle return/unloading */}
+              {tour.statut === 'RETOUR' && (
                 <Button
                   mode="contained"
                   icon="package-down"
                   style={[styles.actionButton, { backgroundColor: '#9C27B0' }]}
                   onPress={() => navigateToScreen('AgentControleRetour', { tourId: tour.id })}
                 >
-                  Gérer Retour
+                  Déchargement
                 </Button>
+              )}
+
+              {/* EN_ATTENTE_DECHARGEMENT - Unloaded, waiting for hygiene or done */}
+              {tour.statut === 'EN_ATTENTE_DECHARGEMENT' && (
+                <View style={styles.completedBadge}>
+                  <Text style={styles.completedText}>✅ Déchargé</Text>
+                </View>
               )}
 
               {/* EN_ATTENTE_HYGIENE - Waiting for hygiene check */}

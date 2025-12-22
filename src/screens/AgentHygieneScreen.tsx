@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, ScrollView, Alert, RefreshControl, TextInput as RNTextInput, TouchableOpacity, Platform } from 'react-native';
-import { Text, Card } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { Text, Card, Button } from 'react-native-paper';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import MatriculeText from '../components/MatriculeText';
@@ -15,9 +15,12 @@ export default function AgentHygieneScreen() {
   const [serieNumber, setSerieNumber] = useState('');
   const [uniqueNumber, setUniqueNumber] = useState('');
 
-  useEffect(() => {
-    loadTours();
-  }, []);
+  // Refresh tours when screen comes into focus (after returning from detail)
+  useFocusEffect(
+    useCallback(() => {
+      loadTours();
+    }, [])
+  );
 
   const loadTours = async () => {
     setLoading(true);
@@ -178,12 +181,7 @@ export default function AgentHygieneScreen() {
 
         {/* Tour Cards */}
         {displayTours.map((tour: any) => (
-          <TouchableOpacity 
-            key={tour.id} 
-            style={styles.tourCard}
-            onPress={() => navigation.navigate('AgentHygieneDetail', { tourId: tour.id })}
-            activeOpacity={0.7}
-          >
+          <View key={tour.id} style={styles.tourCard}>
             <View style={styles.tourCardContent}>
               {/* Left: Driver info */}
               <View style={styles.tourLeft}>
@@ -204,7 +202,16 @@ export default function AgentHygieneScreen() {
               <Text style={styles.detailText}>🗺️ {tour.secteur?.nom || 'N/A'}</Text>
               <Text style={styles.detailText}>📦 Retour: {tour.nbre_caisses_retour || 0} caisses</Text>
             </View>
-          </TouchableOpacity>
+            
+            {/* Inspection Button */}
+            <TouchableOpacity
+              style={styles.inspectionButton}
+              onPress={() => navigation.navigate('AgentHygieneDetail', { tourId: tour.id })}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.inspectionButtonText}>🔍 Inspection</Text>
+            </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -400,5 +407,23 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 13,
     color: '#666',
+  },
+  inspectionButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inspectionButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
 });

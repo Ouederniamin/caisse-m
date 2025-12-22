@@ -19,7 +19,7 @@ let useDocumentUploader: any = null;
 if (Platform.OS !== 'web') {
   try {
     const { generateReactNativeHelpers } = require("@uploadthing/expo");
-    const helpers = generateReactNativeHelpers<UploadRouter>({
+    const helpers = (generateReactNativeHelpers as any)({
       url: getServerUrl(),
     });
     useImageUploader = helpers.useImageUploader;

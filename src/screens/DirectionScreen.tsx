@@ -35,6 +35,7 @@ export default function DirectionScreen() {
   const [conflicts, setConflicts] = useState<ConflictSummary[]>([]);
   const [tours, setTours] = useState<TourSummary[]>([]);
   const [queuedActions, setQueuedActions] = useState<QueuedAction[]>([]);
+  const [stock, setStock] = useState<any>(null);
   
   // Offline state
   const [isOnline, setIsOnline] = useState(true);
@@ -109,6 +110,15 @@ export default function DirectionScreen() {
           const toursResult = await offlineService.getActiveTours(forceRefresh);
           setTours(toursResult.data);
           setFromCache(toursResult.fromCache);
+          break;
+        case 'stock':
+          try {
+            const api = (await import('../services/api')).default;
+            const res = await api.get('/api/stock');
+            setStock(res.data);
+          } catch (e) {
+            console.error('Stock load error:', e);
+          }
           break;
       }
       await loadLastSync();
@@ -235,6 +245,18 @@ export default function DirectionScreen() {
     return colors[status] || '#757575';
   };
 
+  const getTourStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'PREPARATION': 'Préparation',
+      'PRET_A_PARTIR': 'Prêt à partir',
+      'EN_TOURNEE': 'En tournée',
+      'EN_ATTENTE_DECHARGEMENT': 'Déchargement',
+      'EN_ATTENTE_HYGIENE': 'Hygiène',
+      'TERMINEE': 'Terminée',
+    };
+    return labels[status] || status;
+  };
+
   // ============ RENDER KPIs ============
   const renderKPIs = () => (
     <ScrollView
@@ -326,6 +348,105 @@ export default function DirectionScreen() {
           <Card.Content>
             <Text style={styles.emptyText}>
               {loading ? 'Chargement...' : 'Aucune donnée disponible'}
+            </Text>
+          </Card.Content>
+        </Card>
+      )}
+    </ScrollView>
+  );
+
+  // ============ RENDER STOCK ============
+  const renderStock = () => (
+    <ScrollView
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {stock ? (
+        <>
+          {/* Main Stock Info */}
+          <Card style={styles.stockMainCard}>
+            <Card.Content>
+              <View style={styles.stockHeader}>
+                <Text style={styles.stockIcon}>📦</Text>
+                <Text style={styles.stockTitle}>Stock Caisses</Text>
+              </View>
+              <View style={styles.stockMainValue}>
+                <Text style={styles.stockBigNumber}>{stock.stockActuel}</Text>
+                <Text style={styles.stockUnit}>caisses en stock</Text>
+              </View>
+            </Card.Content>
+          </Card>
+
+          {/* Stock Details Grid */}
+          <View style={styles.stockGrid}>
+            <Surface style={[styles.stockCard, { backgroundColor: '#E3F2FD' }]} elevation={2}>
+              <Text style={styles.stockCardIcon}>🏭</Text>
+              <Text style={[styles.stockCardValue, { color: '#1976D2' }]}>{stock.stockDisponible}</Text>
+              <Text style={styles.stockCardLabel}>Disponible</Text>
+            </Surface>
+            
+            <Surface style={[styles.stockCard, { backgroundColor: '#FFF3E0' }]} elevation={2}>
+              <Text style={styles.stockCardIcon}>🚚</Text>
+              <Text style={[styles.stockCardValue, { color: '#E65100' }]}>{stock.stockEnTournee}</Text>
+              <Text style={styles.stockCardLabel}>En Tournée</Text>
+            </Surface>
+            
+            <Surface style={[styles.stockCard, { backgroundColor: '#FFEBEE' }]} elevation={2}>
+              <Text style={styles.stockCardIcon}>⚠️</Text>
+              <Text style={[styles.stockCardValue, { color: '#C62828' }]}>{stock.stockPerdu}</Text>
+              <Text style={styles.stockCardLabel}>Perdues</Text>
+            </Surface>
+            
+            <Surface style={[styles.stockCard, { backgroundColor: '#E8F5E9' }]} elevation={2}>
+              <Text style={styles.stockCardIcon}>📊</Text>
+              <Text style={[styles.stockCardValue, { color: '#2E7D32' }]}>{stock.stockInitial}</Text>
+              <Text style={styles.stockCardLabel}>Initial</Text>
+            </Surface>
+          </View>
+
+          {/* Recent Movements */}
+          <Card style={styles.mouvementsCard}>
+            <Card.Content>
+              <Title style={styles.cardTitle}>📜 Derniers Mouvements</Title>
+              {stock.mouvements?.length > 0 ? (
+                stock.mouvements.slice(0, 5).map((m: any) => (
+                  <View key={m.id} style={styles.mouvementRow}>
+                    <View style={styles.mouvementInfo}>
+                      <Text style={styles.mouvementType}>
+                        {m.type === 'DEPART_TOURNEE' && '🚚 Départ'}
+                        {m.type === 'RETOUR_TOURNEE' && '📥 Retour'}
+                        {m.type === 'PERTE' && '⚠️ Perte'}
+                        {m.type === 'SURPLUS' && '✨ Surplus'}
+                        {m.type === 'ACHAT' && '🛒 Achat'}
+                        {m.type === 'AJUSTEMENT' && '🔧 Ajustement'}
+                        {m.type === 'INITIALISATION' && '🔄 Init'}
+                        {!['DEPART_TOURNEE', 'RETOUR_TOURNEE', 'PERTE', 'SURPLUS', 'ACHAT', 'AJUSTEMENT', 'INITIALISATION'].includes(m.type) && m.type}
+                      </Text>
+                      {m.matricule && <Text style={styles.mouvementMatricule}>{m.matricule}</Text>}
+                    </View>
+                    <View style={styles.mouvementValues}>
+                      <Text style={[
+                        styles.mouvementQty,
+                        m.quantite > 0 ? styles.qtyPositive : styles.qtyNegative
+                      ]}>
+                        {m.quantite > 0 ? '+' : ''}{m.quantite}
+                      </Text>
+                      <Text style={styles.mouvementSolde}>→ {m.soldeApres}</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>Aucun mouvement</Text>
+              )}
+            </Card.Content>
+          </Card>
+        </>
+      ) : (
+        <Card style={styles.emptyCard}>
+          <Card.Content>
+            <Text style={styles.emptyText}>
+              {loading ? 'Chargement...' : 'Stock non initialisé'}
             </Text>
           </Card.Content>
         </Card>
@@ -446,7 +567,7 @@ export default function DirectionScreen() {
                   style={[styles.statusChip, { backgroundColor: getTourStatusColor(tour.statut) }]}
                   textStyle={styles.statusChipText}
                 >
-                  {tour.statut.replace(/_/g, ' ')}
+                  {getTourStatusLabel(tour.statut)}
                 </Chip>
               </View>
 
@@ -524,6 +645,7 @@ export default function DirectionScreen() {
         onValueChange={setView}
         buttons={[
           { value: 'kpis', label: 'KPIs', icon: 'chart-box' },
+          { value: 'stock', label: 'Stock', icon: 'package-variant' },
           { value: 'conflicts', label: 'Conflits', icon: 'alert-circle' },
           { value: 'tours', label: 'Tournées', icon: 'truck' },
         ]}
@@ -533,6 +655,7 @@ export default function DirectionScreen() {
       {/* Content */}
       <View style={styles.content}>
         {view === 'kpis' && renderKPIs()}
+        {view === 'stock' && renderStock()}
         {view === 'conflicts' && renderConflicts()}
         {view === 'tours' && renderTours()}
       </View>
@@ -695,6 +818,111 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
   },
+  
+  // Stock Styles
+  stockMainCard: {
+    marginBottom: 15,
+    borderRadius: 16,
+    backgroundColor: '#1a237e',
+  },
+  stockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  stockIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  stockTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  stockMainValue: {
+    alignItems: 'center',
+    paddingVertical: 15,
+  },
+  stockBigNumber: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  stockUnit: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 5,
+  },
+  stockGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  stockCard: {
+    width: '48%',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  stockCardIcon: {
+    fontSize: 22,
+    marginBottom: 5,
+  },
+  stockCardValue: {
+    fontSize: 26,
+    fontWeight: 'bold',
+  },
+  stockCardLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  mouvementsCard: {
+    marginBottom: 15,
+    borderRadius: 12,
+  },
+  mouvementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  mouvementInfo: {
+    flex: 1,
+  },
+  mouvementType: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  mouvementMatricule: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  mouvementValues: {
+    alignItems: 'flex-end',
+  },
+  mouvementQty: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  qtyPositive: {
+    color: '#4CAF50',
+  },
+  qtyNegative: {
+    color: '#F44336',
+  },
+  mouvementSolde: {
+    fontSize: 12,
+    color: '#666',
+  },
+
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',

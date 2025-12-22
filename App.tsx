@@ -11,13 +11,18 @@ import HomeScreen from './src/screens/HomeScreen';
 import SecuriteScreen from './src/screens/SecuriteScreen';
 import PeseeSortieScreen from './src/screens/PeseeSortieScreen';
 import PeseeEntreeScreen from './src/screens/PeseeEntreeScreen';
+import PeseeVideScreen from './src/screens/PeseeVideScreen';
 import AgentControleScreen from './src/screens/AgentControleScreen';
 import AgentControleCreateTourScreen from './src/screens/AgentControleCreateTourScreen';
 import AgentControleRetourScreen from './src/screens/AgentControleRetourScreen';
+import AgentControleChargementScreen from './src/screens/AgentControleChargementScreen';
+import ChargementDetailScreen from './src/screens/ChargementDetailScreen';
 import TourDetailScreen from './src/screens/TourDetailScreen';
 import AgentHygieneScreen from './src/screens/AgentHygieneScreen';
 import AgentHygieneDetailScreen from './src/screens/AgentHygieneDetailScreen';
 import ConflictDetailScreen from './src/screens/ConflictDetailScreen';
+import ConfirmArrivalScreen from './src/screens/ConfirmArrivalScreen';
+import AuthorizeExitScreen from './src/screens/AuthorizeExitScreen';
 import DirectionScreen from './src/screens/DirectionScreen';
 import MainTabs from './src/navigation/MainTabs';
 import api from './src/services/api';
@@ -231,11 +236,16 @@ function AppContent() {
               <Stack.Screen name="MainTabs" component={MainTabs} />
               <Stack.Screen name="PeseeSortie" component={PeseeSortieScreen} />
               <Stack.Screen name="PeseeEntree" component={PeseeEntreeScreen} />
+              <Stack.Screen name="PeseeVide" component={PeseeVideScreen} />
               <Stack.Screen name="AgentControleCreateTour" component={AgentControleCreateTourScreen} />
               <Stack.Screen name="AgentControleRetour" component={AgentControleRetourScreen} />
+              <Stack.Screen name="AgentControleChargement" component={AgentControleChargementScreen} />
+              <Stack.Screen name="ChargementDetail" component={ChargementDetailScreen} />
               <Stack.Screen name="TourDetail" component={TourDetailScreen} />
               <Stack.Screen name="AgentHygieneDetail" component={AgentHygieneDetailScreen} />
               <Stack.Screen name="ConflictDetail" component={ConflictDetailScreen} />
+              <Stack.Screen name="ConfirmArrival" component={ConfirmArrivalScreen} />
+              <Stack.Screen name="AuthorizeExit" component={AuthorizeExitScreen} />
             </>
           )}
         </Stack.Navigator>
