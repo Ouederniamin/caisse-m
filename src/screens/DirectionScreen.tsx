@@ -555,22 +555,13 @@ export default function DirectionScreen() {
 
             <Card.Actions style={styles.conflictActions}>
               <Button
-                mode="outlined"
-                icon="close"
-                textColor="#F44336"
-                onPress={() => handleRejectConflict(conflict)}
-                style={styles.actionBtn}
-              >
-                Rejeter
-              </Button>
-              <Button
                 mode="contained"
-                icon="check"
-                buttonColor="#4CAF50"
+                icon="wrench"
+                buttonColor="#1976D2"
                 onPress={() => handleApproveConflict(conflict)}
                 style={styles.actionBtn}
               >
-                Approuver
+                Résoudre
               </Button>
             </Card.Actions>
           </Card>
