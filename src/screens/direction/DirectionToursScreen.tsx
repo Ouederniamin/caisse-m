@@ -50,11 +50,9 @@ export default function DirectionToursScreen() {
 
   const getTourStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      'PESEE_VIDE': '#9E9E9E',
-      'EN_CHARGEMENT': '#FF9800',
+      'PREPARATION': '#9E9E9E',
       'PRET_A_PARTIR': '#2196F3',
       'EN_TOURNEE': '#3F51B5',
-      'RETOUR': '#673AB7',
       'EN_ATTENTE_DECHARGEMENT': '#9C27B0',
       'EN_ATTENTE_HYGIENE': '#00BCD4',
       'TERMINEE': '#4CAF50',
@@ -65,8 +63,8 @@ export default function DirectionToursScreen() {
   const filteredTours = filter === 'all' 
     ? tours 
     : tours.filter(t => {
-        if (filter === 'active') return ['EN_TOURNEE', 'PRET_A_PARTIR', 'EN_CHARGEMENT', 'PESEE_VIDE'].includes(t.statut);
-        if (filter === 'waiting') return ['EN_ATTENTE_DECHARGEMENT', 'EN_ATTENTE_HYGIENE', 'RETOUR'].includes(t.statut);
+        if (filter === 'active') return ['EN_TOURNEE', 'PRET_A_PARTIR', 'PREPARATION'].includes(t.statut);
+        if (filter === 'waiting') return ['EN_ATTENTE_DECHARGEMENT', 'EN_ATTENTE_HYGIENE'].includes(t.statut);
         if (filter === 'done') return t.statut === 'TERMINEE';
         return true;
       });

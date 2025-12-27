@@ -127,7 +127,12 @@ export default function PeseeSortieScreen({ route, navigation }: PeseeSortieScre
       showAlert(
         AR.exitWeighingRecorded,
         `${AR.vehicleCanLeave}\n\n${AR.grossWeightLabel}: ${poidsInput} ${AR.kg}`,
-        () => navigation.goBack()
+        () => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          });
+        }
       );
     } catch (error: any) {
       showAlert(AR.error, error.response?.data?.error || AR.cannotRecord);

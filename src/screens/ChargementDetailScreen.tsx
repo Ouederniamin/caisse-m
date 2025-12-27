@@ -170,14 +170,23 @@ export default function ChargementDetailScreen() {
 
       setSubmitting(false);
       
+      // Navigate back to home (pop the stack to go back to tabs)
+      const goHome = () => {
+        // Go back to tabs - this will automatically show the Contrôle tab
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      };
+      
       if (Platform.OS === 'web') {
         window.alert('✅ Succès\n\nChargement effectué!\n\nLe chauffeur peut maintenant aller à la pesée sortie.');
-        navigation.navigate('Contrôle');
+        goHome();
       } else {
         Alert.alert(
           '✅ Succès',
           'Chargement effectué!\n\nLe chauffeur peut maintenant aller à la pesée sortie.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Contrôle') }]
+          [{ text: 'OK', onPress: goHome }]
         );
       }
     } catch (error: any) {

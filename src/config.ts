@@ -1,10 +1,18 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+// TEMPORARY: Force production backend for web testing
+const FORCE_PRODUCTION = true;
+
 // Backend API URL - uses local backend for development, production for builds
 const getApiUrl = () => {
   // Check if running in development mode
   const isDev = __DEV__;
+  
+  // Force production backend for testing
+  if (FORCE_PRODUCTION) {
+    return 'https://caisse-b.vercel.app';
+  }
   
   if (isDev) {
     // In development, use local backend

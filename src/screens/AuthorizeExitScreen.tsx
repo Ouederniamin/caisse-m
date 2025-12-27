@@ -39,7 +39,12 @@ export default function AuthorizeExitScreen() {
     try {
       await api.patch(`/api/tours/${tourId}/exit`);
       setSuccess(true);
-      setTimeout(() => navigation.goBack(), 1200);
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }, 1200);
     } catch (e) {
       setConfirming(false);
       Platform.OS === 'web' ? window.alert('خطأ') : null;

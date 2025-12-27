@@ -233,9 +233,17 @@ export default function AgentControleRetourScreen({ route, navigation }: TourRet
         ? 'La tournée est maintenant en attente de vérification hygiène.'
         : 'La tournée est terminée (pas de produits poulet).';
 
+      // Navigate back to home
+      const goHome = () => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      };
+
       if (Platform.OS === 'web') {
         window.alert('✅ Retour Enregistré\n\n' + nextStepMsg);
-        navigation.goBack();
+        goHome();
       } else {
         Alert.alert(
           '✅ Retour Enregistré',
@@ -243,7 +251,7 @@ export default function AgentControleRetourScreen({ route, navigation }: TourRet
           [
             {
               text: 'OK',
-              onPress: () => navigation.goBack(),
+              onPress: goHome,
             },
           ]
         );

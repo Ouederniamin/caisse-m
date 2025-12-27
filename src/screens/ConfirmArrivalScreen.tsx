@@ -39,7 +39,12 @@ export default function ConfirmArrivalScreen() {
     try {
       await api.patch(`/api/tours/${tourId}/retour-securite`);
       setSuccess(true);
-      setTimeout(() => navigation.goBack(), 1200);
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }, 1200);
     } catch (e) {
       setConfirming(false);
       Platform.OS === 'web' && window.alert('خطأ في تسجيل الوصول');

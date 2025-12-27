@@ -223,7 +223,12 @@ export default function PeseeVideScreen() {
 
       await api.post('/api/tours/pesee-vide', payload);
 
-      showAlert(AR.tourCreated, AR.driverCanGo, () => navigation.goBack());
+      showAlert(AR.tourCreated, AR.driverCanGo, () => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      });
     } catch (error: any) {
       console.error('Error creating tour:', error);
       showAlert(AR.error, error.response?.data?.error || AR.errorCreating);
