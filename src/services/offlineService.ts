@@ -436,6 +436,38 @@ class OfflineService {
       return false;
     }
   }
+  
+  async resolveConflict(conflictId: string, resolutionData: {
+    type: 'PAIEMENT' | 'RETOUR_CAISSES';
+    modePaiement?: 'ESPECES' | 'RETENUE_SALAIRE';
+    quantite?: number;
+    montant?: number;
+    notes?: string;
+  }): Promise<boolean> {
+    const isOnline = await this.checkOnlineStatus();
+
+    if (isOnline) {
+      try {
+        await api.post(`/api/conflicts/${conflictId}/resolve`, resolutionData);
+        return true;
+      } catch (error: any) {
+        console.error('[OfflineService] Error resolving conflict:', error?.message);
+        // For now, fall back to simple approve if resolve fails
+        return this.approveConflict(conflictId, resolutionData.notes);
+      }
+    } else {
+      // Offline: queue as approve action with notes describing resolution
+      const notesSummary = resolutionData.type === 'PAIEMENT' 
+        ? `Paiement ${resolutionData.modePaiement === 'ESPECES' ? 'espèces' : 'retenue salaire'} - ${resolutionData.montant} TND`
+        : `Retour ${resolutionData.quantite} caisses`;
+      await this.queueAction({
+        type: 'APPROVE_CONFLICT',
+        conflictId,
+        notes: `${notesSummary}. ${resolutionData.notes || ''}`,
+      });
+      return false;
+    }
+  }
 }
 
 // Export singleton

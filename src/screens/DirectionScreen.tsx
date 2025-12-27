@@ -49,6 +49,11 @@ export default function DirectionScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<ConflictSummary | null>(null);
   const [actionNotes, setActionNotes] = useState('');
+  
+  // Resolution state
+  const [resolutionType, setResolutionType] = useState<'PAIEMENT' | 'RETOUR_CAISSES' | null>(null);
+  const [modePaiement, setModePaiement] = useState<'ESPECES' | 'RETENUE_SALAIRE' | null>(null);
+  const [quantiteRetournee, setQuantiteRetournee] = useState('');
 
   // Load data on mount and view change
   useEffect(() => {
@@ -170,27 +175,60 @@ export default function DirectionScreen() {
   const handleApproveConflict = async (conflict: ConflictSummary) => {
     setSelectedConflict(conflict);
     setActionNotes('');
+    setResolutionType(null);
+    setModePaiement(null);
+    setQuantiteRetournee(conflict.quantite_perdue.toString());
     setModalVisible(true);
   };
 
   const confirmApprove = async () => {
     if (!selectedConflict) return;
     
+    // Validate resolution type is selected
+    if (!resolutionType) {
+      showSnackbar('⚠️ Veuillez sélectionner le type de résolution');
+      return;
+    }
+    
+    // Validate payment mode if PAIEMENT
+    if (resolutionType === 'PAIEMENT' && !modePaiement) {
+      showSnackbar('⚠️ Veuillez sélectionner le mode de paiement');
+      return;
+    }
+    
+    // Validate quantity if RETOUR_CAISSES
+    const qteRetour = parseInt(quantiteRetournee) || 0;
+    if (resolutionType === 'RETOUR_CAISSES' && (qteRetour <= 0 || qteRetour > selectedConflict.quantite_perdue)) {
+      showSnackbar('⚠️ Quantité retournée invalide');
+      return;
+    }
+    
     setModalVisible(false);
-    const success = await offlineService.approveConflict(selectedConflict.id, actionNotes);
+    
+    // Build resolution data
+    const resolutionData = {
+      type: resolutionType,
+      modePaiement: resolutionType === 'PAIEMENT' ? modePaiement : undefined,
+      quantite: resolutionType === 'RETOUR_CAISSES' ? qteRetour : undefined,
+      montant: resolutionType === 'PAIEMENT' ? selectedConflict.montant_dette_tnd : undefined,
+      notes: actionNotes,
+    };
+    
+    const success = await offlineService.resolveConflict(selectedConflict.id, resolutionData);
     
     if (success) {
-      showSnackbar('✅ Conflit approuvé');
+      showSnackbar('✅ Conflit résolu');
       await loadData(true);
     } else {
       showSnackbar('📋 Action en file d\'attente (hors-ligne)');
       await loadQueuedActions();
-      // Remove from local list optimistically
       setConflicts(prev => prev.filter(c => c.id !== selectedConflict.id));
     }
     
     setSelectedConflict(null);
     setActionNotes('');
+    setResolutionType(null);
+    setModePaiement(null);
   };
 
   const handleRejectConflict = async (conflict: ConflictSummary) => {
@@ -660,7 +698,7 @@ export default function DirectionScreen() {
         {view === 'tours' && renderTours()}
       </View>
 
-      {/* Approve Modal */}
+      {/* Resolve Conflict Modal */}
       <Portal>
         <Modal
           visible={modalVisible}
@@ -669,19 +707,100 @@ export default function DirectionScreen() {
         >
           <Card>
             <Card.Content>
-              <Title style={styles.modalTitle}>Approuver le Conflit</Title>
+              <Title style={styles.modalTitle}>Résoudre le Conflit</Title>
               {selectedConflict && (
                 <>
                   <Text style={styles.modalInfo}>
-                    {selectedConflict.driver} - {selectedConflict.quantite_perdue} caisses
+                    {selectedConflict.driver} - {selectedConflict.quantite_perdue} caisses ({selectedConflict.montant_dette_tnd} TND)
                   </Text>
+                  
+                  {/* Resolution Type Selection */}
+                  <Text style={styles.sectionLabel}>Type de résolution *</Text>
+                  <View style={styles.optionsRow}>
+                    <Button
+                      mode={resolutionType === 'PAIEMENT' ? 'contained' : 'outlined'}
+                      onPress={() => setResolutionType('PAIEMENT')}
+                      style={styles.optionButton}
+                      labelStyle={styles.optionButtonLabel}
+                      icon="cash"
+                    >
+                      Paiement
+                    </Button>
+                    <Button
+                      mode={resolutionType === 'RETOUR_CAISSES' ? 'contained' : 'outlined'}
+                      onPress={() => setResolutionType('RETOUR_CAISSES')}
+                      style={styles.optionButton}
+                      labelStyle={styles.optionButtonLabel}
+                      icon="package-variant"
+                    >
+                      Retour Caisses
+                    </Button>
+                  </View>
+                  
+                  {/* Payment Mode (if PAIEMENT) */}
+                  {resolutionType === 'PAIEMENT' && (
+                    <>
+                      <Text style={styles.sectionLabel}>Mode de paiement *</Text>
+                      <View style={styles.optionsRow}>
+                        <Button
+                          mode={modePaiement === 'ESPECES' ? 'contained' : 'outlined'}
+                          onPress={() => setModePaiement('ESPECES')}
+                          style={styles.optionButton}
+                          labelStyle={styles.optionButtonLabel}
+                          icon="cash-multiple"
+                        >
+                          Espèces
+                        </Button>
+                        <Button
+                          mode={modePaiement === 'RETENUE_SALAIRE' ? 'contained' : 'outlined'}
+                          onPress={() => setModePaiement('RETENUE_SALAIRE')}
+                          style={styles.optionButton}
+                          labelStyle={styles.optionButtonLabel}
+                          icon="account-cash"
+                        >
+                          Retenue Salaire
+                        </Button>
+                      </View>
+                      <Surface style={styles.paymentSummary} elevation={1}>
+                        <Text style={styles.paymentSummaryText}>
+                          💰 Montant à payer: {selectedConflict.montant_dette_tnd} TND
+                        </Text>
+                      </Surface>
+                    </>
+                  )}
+                  
+                  {/* Quantity Returned (if RETOUR_CAISSES) */}
+                  {resolutionType === 'RETOUR_CAISSES' && (
+                    <>
+                      <Text style={styles.sectionLabel}>Caisses retournées *</Text>
+                      <TextInput
+                        label={`Quantité (max ${selectedConflict.quantite_perdue})`}
+                        value={quantiteRetournee}
+                        onChangeText={setQuantiteRetournee}
+                        mode="outlined"
+                        keyboardType="numeric"
+                        style={styles.modalInput}
+                      />
+                      {parseInt(quantiteRetournee) < selectedConflict.quantite_perdue && parseInt(quantiteRetournee) > 0 && (
+                        <Surface style={styles.partialReturnWarning} elevation={1}>
+                          <Text style={styles.partialReturnText}>
+                            ⚠️ Retour partiel: {parseInt(quantiteRetournee)}/{selectedConflict.quantite_perdue} caisses
+                          </Text>
+                          <Text style={styles.remainingText}>
+                            Reste: {selectedConflict.quantite_perdue - parseInt(quantiteRetournee)} caisses à récupérer
+                          </Text>
+                        </Surface>
+                      )}
+                    </>
+                  )}
+                  
                   <TextInput
                     label="Notes (optionnel)"
                     value={actionNotes}
                     onChangeText={setActionNotes}
                     mode="outlined"
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={2}
                     style={styles.modalInput}
                   />
                 </>
@@ -689,7 +808,13 @@ export default function DirectionScreen() {
             </Card.Content>
             <Card.Actions>
               <Button onPress={() => setModalVisible(false)}>Annuler</Button>
-              <Button mode="contained" onPress={confirmApprove}>Confirmer</Button>
+              <Button 
+                mode="contained" 
+                onPress={confirmApprove}
+                disabled={!resolutionType || (resolutionType === 'PAIEMENT' && !modePaiement)}
+              >
+                Confirmer
+              </Button>
             </Card.Actions>
           </Card>
         </Modal>
@@ -1120,6 +1245,52 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     marginTop: 10,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  optionButton: {
+    flex: 1,
+  },
+  optionButtonLabel: {
+    fontSize: 12,
+  },
+  paymentSummary: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E9',
+  },
+  paymentSummaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
+  partialReturnWarning: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFF3E0',
+  },
+  partialReturnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  remainingText: {
+    fontSize: 12,
+    color: '#F57C00',
+    marginTop: 4,
   },
 
   // Snackbar
