@@ -73,11 +73,13 @@ export default function DirectionConflictsScreen() {
     if (!hasActiveSearch) return list;
     
     return list.filter(conflict => {
-      const matricule = conflict.matricule?.toLowerCase() || '';
       const matriculeNumbers = conflict.matricule?.replace(/[^0-9]/g, '') || '';
+      // First 3 digits are serie, rest are unique number
+      const matriculeSerie = matriculeNumbers.slice(0, 3);
+      const matriculeUnique = matriculeNumbers.slice(3);
       
-      const serieMatch = !serieNumber.trim() || matricule.includes(serieNumber);
-      const uniqueMatch = !uniqueNumber.trim() || matriculeNumbers.includes(uniqueNumber);
+      const serieMatch = !serieNumber.trim() || matriculeSerie.includes(serieNumber.trim());
+      const uniqueMatch = !uniqueNumber.trim() || matriculeUnique.includes(uniqueNumber.trim());
       
       return serieMatch && uniqueMatch;
     });

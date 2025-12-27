@@ -108,13 +108,17 @@ export default function AgentControleScreen() {
       result = result.filter(tour => tour.statut === statusFilter);
     }
     
-    // Apply search filter
-    if (searchQuery.length >= 3) {
-      const searchTerm = searchQuery.toLowerCase().replace(/\s+/g, '');
+    // Apply search filter - search if any field has input
+    if (serieNumber.trim() || uniqueNumber.trim()) {
       result = result.filter(tour => {
-        const matriculeClean = tour.matricule_vehicule?.toLowerCase().replace(/\s+/g, '');
-        return matriculeClean?.includes(searchTerm) ||
-               tour.driver?.nom_complet?.toLowerCase().includes(searchTerm);
+        const matriculeNumbers = tour.matricule_vehicule?.replace(/[^0-9]/g, '') || '';
+        const matriculeSerie = matriculeNumbers.slice(0, 3);
+        const matriculeUnique = matriculeNumbers.slice(3);
+        
+        const serieMatch = !serieNumber.trim() || matriculeSerie.includes(serieNumber.trim());
+        const uniqueMatch = !uniqueNumber.trim() || matriculeUnique.includes(uniqueNumber.trim());
+        
+        return serieMatch && uniqueMatch;
       });
     }
     

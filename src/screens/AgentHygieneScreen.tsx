@@ -50,12 +50,17 @@ export default function AgentHygieneScreen() {
     const fullQuery = `${serie} ${unique}`.trim();
     setSearchQuery(fullQuery);
     
-    if (fullQuery.length >= 3) {
-      const searchTerm = fullQuery.toLowerCase().replace(/\s+/g, '');
+    // Search if any field has input
+    if (serie.trim() || unique.trim()) {
       const filtered = tours.filter(tour => {
-        const matriculeClean = tour.matricule_vehicule?.toLowerCase().replace(/\s+/g, '');
-        return matriculeClean.includes(searchTerm) ||
-               tour.driver?.nom_complet?.toLowerCase().includes(searchTerm);
+        const matriculeNumbers = tour.matricule_vehicule?.replace(/[^0-9]/g, '') || '';
+        const matriculeSerie = matriculeNumbers.slice(0, 3);
+        const matriculeUnique = matriculeNumbers.slice(3);
+        
+        const serieMatch = !serie.trim() || matriculeSerie.includes(serie.trim());
+        const uniqueMatch = !unique.trim() || matriculeUnique.includes(unique.trim());
+        
+        return serieMatch && uniqueMatch;
       });
       setFilteredTours(filtered);
     } else {

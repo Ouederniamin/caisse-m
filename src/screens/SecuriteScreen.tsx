@@ -197,14 +197,18 @@ export default function SecuriteScreen() {
   };
 
   const searchTours = (toursToSearch: any[]) => {
-    if (!searchQuery.trim()) return toursToSearch;
-    const searchLower = searchQuery.toLowerCase();
-    const searchNumbers = searchQuery.replace(/[^0-9]/g, '');
+    // Search if any field has input
+    if (!serieNumber.trim() && !uniqueNumber.trim()) return toursToSearch;
+    
     return toursToSearch.filter((tour: any) => {
-      const matricule = tour.matricule_vehicule?.toLowerCase() || '';
       const matriculeNumbers = tour.matricule_vehicule?.replace(/[^0-9]/g, '') || '';
-      const driverName = tour.driver?.nom_complet?.toLowerCase() || '';
-      return matricule.includes(searchLower) || driverName.includes(searchLower) || (searchNumbers && matriculeNumbers.includes(searchNumbers));
+      const matriculeSerie = matriculeNumbers.slice(0, 3);
+      const matriculeUnique = matriculeNumbers.slice(3);
+      
+      const serieMatch = !serieNumber.trim() || matriculeSerie.includes(serieNumber.trim());
+      const uniqueMatch = !uniqueNumber.trim() || matriculeUnique.includes(uniqueNumber.trim());
+      
+      return serieMatch && uniqueMatch;
     });
   };
 
