@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, ScrollView, Alert, Platform, RefreshControl } from 'react-native';
-import { Text, Card, Button, Chip, Surface, Divider, ActivityIndicator, IconButton } from 'react-native-paper';
+import { Text, Card, Button, Chip, Surface, Divider, ActivityIndicator, IconButton, Portal, Modal, TextInput } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../services/api';
@@ -67,6 +67,13 @@ export default function ConflictDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<ConflictDetail | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Resolution modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [resolutionType, setResolutionType] = useState<'PAIEMENT' | 'RETOUR_CAISSES' | null>(null);
+  const [modePaiement, setModePaiement] = useState<'ESPECES' | 'RETENUE_SALAIRE' | null>(null);
+  const [quantiteRetournee, setQuantiteRetournee] = useState('');
+  const [actionNotes, setActionNotes] = useState('');
 
   useEffect(() => {
     loadConflictDetail();
@@ -100,68 +107,50 @@ export default function ConflictDetailScreen() {
     }
   };
 
-  const handleApprove = async () => {
-    const doApprove = async () => {
-      try {
-        setActionLoading(true);
-        await api.post(`/api/conflicts/${conflictId}/approve`, { notes: '' });
-        showAlert('Succès', 'Conflit approuvé avec succès', () => navigation.goBack());
-      } catch (error) {
-        console.error('Error approving conflict:', error);
-        showAlert('Erreur', 'Impossible d\'approuver le conflit');
-      } finally {
-        setActionLoading(false);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Voulez-vous approuver ce conflit?')) {
-        doApprove();
-      }
-    } else {
-      Alert.alert('Confirmer', 'Voulez-vous approuver ce conflit?', [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Approuver', onPress: doApprove }
-      ]);
-    }
+  const handleOpenResolveModal = () => {
+    setResolutionType(null);
+    setModePaiement(null);
+    setQuantiteRetournee(data?.conflict.quantite_perdue.toString() || '');
+    setActionNotes('');
+    setModalVisible(true);
   };
 
-  const handleReject = async () => {
-    const doReject = async (notes: string) => {
-      try {
-        setActionLoading(true);
-        await api.post(`/api/conflicts/${conflictId}/reject`, { notes });
-        showAlert('Succès', 'Conflit rejeté', () => navigation.goBack());
-      } catch (error) {
-        console.error('Error rejecting conflict:', error);
-        showAlert('Erreur', 'Impossible de rejeter le conflit');
-      } finally {
-        setActionLoading(false);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const notes = window.prompt('Raison du rejet (obligatoire):');
-      if (notes && notes.trim()) {
-        doReject(notes);
-      } else if (notes !== null) {
-        showAlert('Erreur', 'Une raison est obligatoire pour rejeter');
-      }
-    } else {
-      Alert.prompt('Rejeter le conflit', 'Raison du rejet (obligatoire):', [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Rejeter', 
-          style: 'destructive',
-          onPress: (notes: string | undefined) => {
-            if (notes && notes.trim()) {
-              doReject(notes);
-            } else {
-              showAlert('Erreur', 'Une raison est obligatoire pour rejeter');
-            }
-          }
-        }
-      ], 'plain-text');
+  const handleResolve = async () => {
+    if (!resolutionType) {
+      showAlert('Erreur', 'Veuillez sélectionner le type de résolution');
+      return;
+    }
+    
+    if (resolutionType === 'PAIEMENT' && !modePaiement) {
+      showAlert('Erreur', 'Veuillez sélectionner le mode de paiement');
+      return;
+    }
+    
+    const qteRetour = parseInt(quantiteRetournee) || 0;
+    if (resolutionType === 'RETOUR_CAISSES' && (qteRetour <= 0 || qteRetour > (data?.conflict.quantite_perdue || 0))) {
+      showAlert('Erreur', 'Quantité retournée invalide');
+      return;
+    }
+    
+    try {
+      setActionLoading(true);
+      setModalVisible(false);
+      
+      const resolutionData = {
+        type: resolutionType,
+        modePaiement: resolutionType === 'PAIEMENT' ? modePaiement : undefined,
+        quantite: resolutionType === 'RETOUR_CAISSES' ? qteRetour : undefined,
+        montant: resolutionType === 'PAIEMENT' ? data?.conflict.montant_dette_tnd : undefined,
+        notes: actionNotes,
+      };
+      
+      await api.post(`/api/conflicts/${conflictId}/resolve`, resolutionData);
+      showAlert('Succès', 'Conflit résolu avec succès', () => navigation.goBack());
+    } catch (error) {
+      console.error('Error resolving conflict:', error);
+      showAlert('Erreur', 'Impossible de résoudre le conflit');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -444,32 +433,144 @@ export default function ConflictDetailScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Action Buttons */}
+      {/* Action Button */}
       {isPending && (
         <Surface style={styles.actionBar} elevation={4}>
           <Button
-            mode="outlined"
-            icon="close"
-            textColor="#F44336"
-            style={styles.actionButton}
-            onPress={handleReject}
-            disabled={actionLoading}
-          >
-            Rejeter
-          </Button>
-          <Button
             mode="contained"
-            icon="check"
-            buttonColor="#4CAF50"
-            style={styles.actionButton}
-            onPress={handleApprove}
+            icon="wrench"
+            buttonColor="#1976D2"
+            style={[styles.actionButton, { flex: 1 }]}
+            onPress={handleOpenResolveModal}
             loading={actionLoading}
             disabled={actionLoading}
           >
-            Approuver
+            Résoudre le Conflit
           </Button>
         </Surface>
       )}
+
+      {/* Resolution Modal */}
+      <Portal>
+        <Modal
+          visible={modalVisible}
+          onDismiss={() => setModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Card>
+            <Card.Content>
+              <Text style={styles.modalTitle}>Résoudre le Conflit</Text>
+              {data && (
+                <>
+                  <Text style={styles.modalInfo}>
+                    {data.driverHistory?.driver.nom_complet} - {data.conflict.quantite_perdue} caisses ({data.conflict.montant_dette_tnd} TND)
+                  </Text>
+                  
+                  {/* Resolution Type Selection */}
+                  <Text style={styles.sectionLabel}>Type de résolution *</Text>
+                  <View style={styles.optionsRow}>
+                    <Button
+                      mode={resolutionType === 'PAIEMENT' ? 'contained' : 'outlined'}
+                      onPress={() => setResolutionType('PAIEMENT')}
+                      style={styles.optionButton}
+                      labelStyle={styles.optionButtonLabel}
+                      icon="cash"
+                    >
+                      Paiement
+                    </Button>
+                    <Button
+                      mode={resolutionType === 'RETOUR_CAISSES' ? 'contained' : 'outlined'}
+                      onPress={() => setResolutionType('RETOUR_CAISSES')}
+                      style={styles.optionButton}
+                      labelStyle={styles.optionButtonLabel}
+                      icon="package-variant"
+                    >
+                      Retour Caisses
+                    </Button>
+                  </View>
+                  
+                  {/* Payment Mode (if PAIEMENT) */}
+                  {resolutionType === 'PAIEMENT' && (
+                    <>
+                      <Text style={styles.sectionLabel}>Mode de paiement *</Text>
+                      <View style={styles.optionsRow}>
+                        <Button
+                          mode={modePaiement === 'ESPECES' ? 'contained' : 'outlined'}
+                          onPress={() => setModePaiement('ESPECES')}
+                          style={styles.optionButton}
+                          labelStyle={styles.optionButtonLabel}
+                          icon="cash-multiple"
+                        >
+                          Espèces
+                        </Button>
+                        <Button
+                          mode={modePaiement === 'RETENUE_SALAIRE' ? 'contained' : 'outlined'}
+                          onPress={() => setModePaiement('RETENUE_SALAIRE')}
+                          style={styles.optionButton}
+                          labelStyle={styles.optionButtonLabel}
+                          icon="account-cash"
+                        >
+                          Retenue Salaire
+                        </Button>
+                      </View>
+                      <Surface style={styles.paymentSummary} elevation={1}>
+                        <Text style={styles.paymentSummaryText}>
+                          💰 Montant à payer: {data.conflict.montant_dette_tnd} TND
+                        </Text>
+                      </Surface>
+                    </>
+                  )}
+                  
+                  {/* Quantity Returned (if RETOUR_CAISSES) */}
+                  {resolutionType === 'RETOUR_CAISSES' && (
+                    <>
+                      <Text style={styles.sectionLabel}>Caisses retournées *</Text>
+                      <TextInput
+                        label={`Quantité (max ${data.conflict.quantite_perdue})`}
+                        value={quantiteRetournee}
+                        onChangeText={setQuantiteRetournee}
+                        mode="outlined"
+                        keyboardType="numeric"
+                        style={styles.modalInput}
+                      />
+                      {parseInt(quantiteRetournee) < data.conflict.quantite_perdue && parseInt(quantiteRetournee) > 0 && (
+                        <Surface style={styles.partialReturnWarning} elevation={1}>
+                          <Text style={styles.partialReturnText}>
+                            ⚠️ Retour partiel: {parseInt(quantiteRetournee)}/{data.conflict.quantite_perdue} caisses
+                          </Text>
+                          <Text style={styles.remainingText}>
+                            Reste: {data.conflict.quantite_perdue - parseInt(quantiteRetournee)} caisses à récupérer
+                          </Text>
+                        </Surface>
+                      )}
+                    </>
+                  )}
+                  
+                  <TextInput
+                    label="Notes (optionnel)"
+                    value={actionNotes}
+                    onChangeText={setActionNotes}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={2}
+                    style={styles.modalInput}
+                  />
+                </>
+              )}
+            </Card.Content>
+            <Card.Actions>
+              <Button onPress={() => setModalVisible(false)}>Annuler</Button>
+              <Button 
+                mode="contained" 
+                onPress={handleResolve}
+                disabled={!resolutionType || (resolutionType === 'PAIEMENT' && !modePaiement)}
+              >
+                Confirmer
+              </Button>
+            </Card.Actions>
+          </Card>
+        </Modal>
+      </Portal>
     </View>
   );
 }
@@ -760,5 +861,70 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 6,
+  },
+  // Modal Styles
+  modalContainer: {
+    margin: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalInput: {
+    marginTop: 10,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  optionButton: {
+    flex: 1,
+  },
+  optionButtonLabel: {
+    fontSize: 11,
+  },
+  paymentSummary: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E9',
+  },
+  paymentSummaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
+  partialReturnWarning: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFF3E0',
+  },
+  partialReturnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  remainingText: {
+    fontSize: 12,
+    color: '#F57C00',
+    marginTop: 4,
   },
 });
