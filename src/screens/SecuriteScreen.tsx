@@ -435,9 +435,9 @@ export default function SecuriteScreen() {
               {searchQuery && <IconButton icon="close-circle" size={28} iconColor="#F44336" style={styles.clearButton} onPress={clearSearch} />}
               <View style={styles.plateSearchContainer}>
                 <View style={styles.plateSearchInner}>
-                  <RNTextInput value={uniqueNumber} onChangeText={(text) => { const cleaned = text.replace(/[^0-9]/g, '').slice(0, 4); handleMatriculeSearch(serieNumber, cleaned); }} keyboardType="numeric" maxLength={4} style={styles.rightSearchInput} placeholder="4567" placeholderTextColor="#666" />
-                  <View style={styles.arabicSearchSection}><Text style={styles.arabicSearchText}>تونس</Text></View>
                   <RNTextInput value={serieNumber} onChangeText={(text) => { const cleaned = text.replace(/[^0-9]/g, '').slice(0, 3); handleMatriculeSearch(cleaned, uniqueNumber); }} keyboardType="numeric" maxLength={3} style={styles.leftSearchInput} placeholder="123" placeholderTextColor="#666" />
+                  <View style={styles.arabicSearchSection}><Text style={styles.arabicSearchText}>تونس</Text></View>
+                  <RNTextInput value={uniqueNumber} onChangeText={(text) => { const cleaned = text.replace(/[^0-9]/g, '').slice(0, 4); handleMatriculeSearch(serieNumber, cleaned); }} keyboardType="numeric" maxLength={4} style={styles.rightSearchInput} placeholder="4567" placeholderTextColor="#666" />
                 </View>
               </View>
             </View>
