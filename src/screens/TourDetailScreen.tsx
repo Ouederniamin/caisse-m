@@ -54,11 +54,17 @@ export default function TourDetailScreen() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: { [key: string]: { label: string; color: string; icon: string; description: string } } = {
-      'PREPARATION': { 
-        label: 'Préparation', 
+      'PESEE_VIDE': { 
+        label: 'Pesée à vide', 
         color: '#6B7280', 
-        icon: 'clock-outline',
-        description: 'Tournée en cours de préparation'
+        icon: 'scale',
+        description: 'En attente de pesée à vide'
+      },
+      'EN_CHARGEMENT': { 
+        label: 'En chargement', 
+        color: '#FF9800', 
+        icon: 'package-variant',
+        description: 'Chargement en cours par Agent Contrôle'
       },
       'PRET_A_PARTIR': { 
         label: 'Prêt à partir', 
@@ -72,8 +78,14 @@ export default function TourDetailScreen() {
         icon: 'truck-fast',
         description: 'Livraison en cours'
       },
+      'RETOUR': { 
+        label: 'Retour usine', 
+        color: '#673AB7', 
+        icon: 'truck-check',
+        description: 'Retour marqué par sécurité'
+      },
       'EN_ATTENTE_DECHARGEMENT': { 
-        label: 'Retour', 
+        label: 'Déchargement', 
         color: '#8B5CF6', 
         icon: 'package-down',
         description: 'Tournée terminée, en attente de déchargement'
