@@ -36,9 +36,24 @@ export default function AgentControleScreen() {
     { key: 'TERMINEE', label: 'Terminée', icon: '✅', color: '#10B981' },
   ];
 
-  // Compute counts for each status
+  // Helper to check if a date is today
+  const isToday = (date: string | Date) => {
+    const tourDate = new Date(date);
+    const today = new Date();
+    return tourDate.getFullYear() === today.getFullYear() &&
+           tourDate.getMonth() === today.getMonth() &&
+           tourDate.getDate() === today.getDate();
+  };
+
+  // Compute counts for each status (TERMINEE only counts today's)
   const getStatusCount = (status: string) => {
-    if (status === 'all') return tours.length;
+    if (status === 'all') {
+      // Count all non-TERMINEE + today's TERMINEE
+      return tours.filter(tour => tour.statut !== 'TERMINEE' || isToday(tour.createdAt)).length;
+    }
+    if (status === 'TERMINEE') {
+      return tours.filter(tour => tour.statut === 'TERMINEE' && isToday(tour.createdAt)).length;
+    }
     return tours.filter(tour => tour.statut === status).length;
   };
 
@@ -102,6 +117,15 @@ export default function AgentControleScreen() {
   // Get tours to display - apply both status filter and search
   const getDisplayTours = () => {
     let result = tours;
+    
+    // For TERMINEE status, only show today's completed tours
+    // For other statuses or 'all', show all tours (but filter TERMINEE to today only)
+    result = result.filter(tour => {
+      if (tour.statut === 'TERMINEE') {
+        return isToday(tour.createdAt);
+      }
+      return true;
+    });
     
     // Apply status filter
     if (statusFilter !== 'all') {
